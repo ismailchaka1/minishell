@@ -6,17 +6,93 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/04/14 12:52:31 by root             ###   ########.fr       */
+/*   Updated: 2025/06/17 23:19:23 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-void init_shell()
+t_env *init_env(t_env *env, char **envp)
 {
-    printf("\033[H\033[J");
-    // printf("Welcome to minishell\n");
+    t_env *head = NULL;
+    t_env *current = NULL;
+    int count = 0;
+
+    (void)env; // Unused parameter
+    if (!envp)
+        return NULL;
+    
+    while (envp[count])
+    {
+        int i = 0;
+        // Find the '=' character
+        while (envp[count][i] && envp[count][i] != '=')
+            i++;
+        
+        if (envp[count][i] == '=')
+        {
+            t_env *new_env = malloc(sizeof(t_env));
+            if (!new_env)
+                return head;
+            new_env->key = strndup(envp[count], i);
+            new_env->value = strdup(envp[count] + i + 1);
+            new_env->next = NULL;
+            
+            if (!head)
+            {
+                head = new_env;
+                current = head;
+            }
+            else
+            {
+                current->next = new_env;
+                current = new_env;
+            }
+        }
+        count++;
+    }
+    return head;
 }
+
+void free_env(t_env *env)
+{
+    while (env)
+    {
+        t_env *next = env->next;
+        free(env->key);
+        free(env->value);
+        free(env);
+        env = next;
+    }
+}
+
+void print_env(t_env *env)
+{
+    if (!env)
+        return;
+
+    t_env *current = env;
+    while (current)
+    {
+        if (current->key && current->value)
+            printf("%s=%s\n", current->key, current->value);
+        else if (current->key)
+            printf("%s=\n", current->key);
+        current = current->next;
+    }
+}
+
+void init_shell(t_shell *shell, char **envp)
+{
+    if (!shell)
+        return;
+    shell->env = init_env(NULL, envp);
+    shell->exit_status = 0;
+}
+// {
+//     printf("\033[H\033[J");
+//     // printf("Welcome to minishell\n");
+// }
 
 // Initialize tokenizer with input string
 t_tokenizer *init_tokenizer(char *input)
@@ -208,10 +284,19 @@ void print_tokens(t_token *tokens)
     }
 }
 
-int main(void)
+int main(int argc, char **argv, char **envp)
 {
     char *input;
-    init_shell();
+    (void)argc;
+    (void)argv; // Unused parameters, but required for main signature
+    t_shell shell;
+    
+    printf("\033[H\033[J"); // Clear screen
+    init_shell(&shell, envp);
+    // builtin_env(&shell); // Rebuild environment if needed
+    builtin_cd(&shell, ".."); // Change to root directory
+    builtin_pwd(&shell); // Rebuild environment if needed
+    builtin_env(&shell); // Print environment variables
     while (1)
     {
         input = readline("minishell > ");
@@ -226,5 +311,6 @@ int main(void)
             printf("Tokenization failed\n");
         free(input);
     }
+    free_env(shell.env);
     return (0);
 }

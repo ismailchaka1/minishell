@@ -1,4 +1,4 @@
-SRCS = 	minishell.c
+SRCS = 	minishell.c builtins/env.c builtins/pwd.c builtins/cd.c
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc
@@ -24,5 +24,3 @@ fclean: clean
 	${RM} ${NAME} ${NAME_BONUS}
 
 re: fclean all
-
-#ww
