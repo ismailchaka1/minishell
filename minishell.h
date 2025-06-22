@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/17 23:14:59 by root             ###   ########.fr       */
+/*   Updated: 2025/06/22 17:58:06 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,6 +68,18 @@ typedef struct s_tokenizer
     size_t pos;          // Current position in input
     t_token *tokens;     // Linked list of tokens
 } t_tokenizer;
+
+// generate me linked list of command that will be executed in execve and hande me redirection and pipes and heredocs
+typedef struct s_command
+{
+    char *command;      // Command to execute
+    char **args;         // Arguments for the command
+    char *input_file;    // Input redirection file
+    char *output_file;   // Output redirection file
+    bool append;         // Append mode for output redirection
+    bool heredoc;        // Indicates if this command uses heredoc
+    struct s_command *next; // Pointer to the next command in the pipeline
+} t_command;
 
 t_tokenizer *init_tokenizer(char *input);
 void free_tokenizer(t_tokenizer *tokenizer);

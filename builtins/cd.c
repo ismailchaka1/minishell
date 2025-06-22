@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   cd.c                                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/17 22:47:58 by root              #+#    #+#             */
-/*   Updated: 2025/06/17 23:17:15 by root             ###   ########.fr       */
+/*   Updated: 2025/06/22 17:10:32 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,8 @@
 int builtin_cd(t_shell *shell, char *path)
 {
     char *oldpwd;
+
+    oldpwd = NULL;
     if (!shell)
     {
         fprintf(stderr, "cd: No such file or directory: %s\n", path);

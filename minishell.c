@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/17 23:19:23 by root             ###   ########.fr       */
+/*   Updated: 2025/06/22 18:56:37 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -284,6 +284,178 @@ void print_tokens(t_token *tokens)
     }
 }
 
+t_command *parse_tokens(t_token *tokens)
+{
+    t_command *head = NULL;
+    t_command *current = NULL;
+
+    while (tokens && tokens->type != TOKEN_EOF)
+    {
+        if (tokens->type == TOKEN_WORD)
+        {
+            if (!current)
+            {
+                current = malloc(sizeof(t_command));
+                if (!current)
+                    return NULL;
+                current->command = strdup(tokens->value);
+                current->args = NULL;
+                current->input_file = NULL;
+                current->output_file = NULL;
+                current->append = false;
+                current->heredoc = false;
+                current->next = NULL;
+
+                if (!head)
+                    head = current;
+                else
+                    head->next = current;
+            }
+            else
+            {
+                char **new_args = NULL;
+                if (current->args)
+                {
+                    int count = 0;
+                    while (current->args[count])
+                        count++;
+                    new_args = malloc(sizeof(char *) * (count + 2));
+                    for (int i = 0; i < count; i++)
+                        new_args[i] = current->args[i];
+                    new_args[count] = strdup(tokens->value);
+                    new_args[count + 1] = NULL;
+                    free(current->args);
+                }
+                else
+                {
+                    new_args = malloc(sizeof(char *) * 2);
+                    new_args[0] = strdup(tokens->value);
+                    new_args[1] = NULL;
+                }
+                current->args = new_args;
+            }
+        }else if (tokens->type == TOKEN_PIPE)
+        {
+            if (current)
+            {
+                if (tokens->next && tokens->next->type == TOKEN_WORD)
+                {
+                    current->next = malloc(sizeof(t_command));
+                    if (!current->next)
+                        return NULL;
+                    current = current->next;
+                    current->command = strdup(tokens->next->value);
+                    current->args = NULL;
+                    current->input_file = NULL;
+                    current->output_file = NULL;
+                    current->append = false;
+                    current->heredoc = false;
+                    current->next = NULL;
+                    tokens = tokens->next;
+                }
+                else
+                {
+                    printf("Error: Pipe without command\n");
+                    return NULL;
+                }
+            }
+            else
+            {
+                printf("Error: Pipe without command\n");
+                return NULL;
+            }
+        }else if (tokens->type == TOKEN_REDIRECT_IN || 
+                  tokens->type == TOKEN_REDIRECT_OUT || 
+                  tokens->type == TOKEN_APPEND || 
+                  tokens->type == TOKEN_HEREDOC)
+        {
+            if (!current)
+            {
+                printf("Error: Redirection without command\n");
+                return NULL;
+            }
+            if (tokens->type == TOKEN_REDIRECT_IN)
+                current->input_file = strdup(tokens->next ? tokens->next->value : "");
+            else if (tokens->type == TOKEN_REDIRECT_OUT)
+                current->output_file = strdup(tokens->next ? tokens->next->value : "");
+            else if (tokens->type == TOKEN_APPEND)
+            {
+                current->output_file = strdup(tokens->next ? tokens->next->value : "");
+                current->append = true;
+            }
+            else if (tokens->type == TOKEN_HEREDOC)
+            {
+                current->heredoc = true;
+                current->input_file = strdup(tokens->next ? tokens->next->value : "");
+            }
+            if (tokens->next)
+                tokens = tokens->next;
+        }else if (tokens->type == TOKEN_SINGLE_QUOTE || 
+                  tokens->type == TOKEN_DOUBLE_QUOTE)
+        {
+            char *value = tokens->value ? strdup(tokens->value) : NULL;
+            if (!value)
+            {
+                printf("Error: Quoted string without value\n");
+                return NULL;
+            }
+            if (current)
+            {
+                current->args = realloc(current->args, sizeof(char *) * 2);
+                current->args[0] = value;
+                current->args[1] = NULL;
+            }
+            else
+            {
+                current = malloc(sizeof(t_command));
+                if (!current)
+                {
+                    free(value);
+                    return NULL;
+                }
+                current->command = value;
+                current->args = NULL;
+                current->input_file = NULL;
+                current->output_file = NULL;
+                current->append = false;
+                current->heredoc = false;
+                current->next = NULL;
+
+                if (!head)
+                    head = current;
+                else
+                    head->next = current;
+            }
+        }
+        tokens = tokens->next;
+    }
+    return head;
+}
+
+void print_commands(t_command *commands)
+{
+    while (commands)
+    {
+        printf("Command:  %s\n", commands->command);
+        if (commands->args)
+        {
+            printf("  Args: ");
+            for (int i = 0; commands->args[i]; i++)
+                printf("%s ", commands->args[i]);
+            printf("\n");
+        }
+        if (commands->input_file)
+            printf("  Input file: %s\n", commands->input_file);
+        if (commands->output_file)
+            printf("  Output file: %s\n", commands->output_file);
+        if (commands->append)
+            printf("  Append mode: true\n");
+        if (commands->heredoc)
+            printf("  Heredoc: true\n");
+        commands = commands->next;
+    }
+}
+
 int main(int argc, char **argv, char **envp)
 {
     char *input;
@@ -306,7 +478,18 @@ int main(int argc, char **argv, char **envp)
             add_history(input);
         t_tokenizer *tokenizer = init_tokenizer(input);
         if (tokenize(tokenizer))
-            print_tokens(tokenizer->tokens);
+        {
+            // change the tokens linked list to a command linked list
+            t_command *commands = parse_tokens(tokenizer->tokens);
+            if (commands)
+            {
+                print_commands(commands);
+                // execute_commands(&shell, commands);
+                // free_commands(commands);
+            }
+            free_tokenizer(tokenizer);
+        }
+            // print_tokens(tokenizer->tokens);
         else
             printf("Tokenization failed\n");
         free(input);
