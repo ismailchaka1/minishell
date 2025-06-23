@@ -6,7 +6,7 @@
 /*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/23 18:18:35 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/23 22:14:15 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,6 +64,17 @@ void free_env(t_env *env)
         free(env);
         env = next;
     }
+}
+
+char *get_env_value(t_env *env, const char *key)
+{
+    while (env)
+    {
+        if (ft_strncmp(env->key, key, ft_strlen(key)) == 0)
+            return env->value;
+        env = env->next;
+    }
+    return NULL; // Key not found
 }
 
 void print_env(t_env *env)
@@ -153,21 +164,6 @@ static bool is_operator(char c)
     return (c == '|' || c == '<' || c == '>');
 }
 
-// Extract a word (handles variables and unquoted strings)
-static char *extract_word(t_tokenizer *tokenizer)
-{
-    size_t start = tokenizer->pos;
-    while (tokenizer->input[tokenizer->pos] && 
-           !isspace(tokenizer->input[tokenizer->pos]) &&
-           !is_operator(tokenizer->input[tokenizer->pos]) &&
-           tokenizer->input[tokenizer->pos] != '\'' &&
-           tokenizer->input[tokenizer->pos] != '"')
-        tokenizer->pos++;
-    size_t len = tokenizer->pos - start;
-    char *word = strndup(tokenizer->input + start, len);
-    return word;
-}
-
 // Extract quoted string (single or double quotes)
 static char *extract_quoted(t_tokenizer *tokenizer, char quote)
 {
@@ -186,9 +182,92 @@ static char *extract_quoted(t_tokenizer *tokenizer, char quote)
     tokenizer->pos++; // Skip closing quote
     return str;
 }
+char *expand_variables(char *str, t_shell *shell)
+{
+    (void)shell; // Unused parameter
+    (void)str; // Unused parameter
+    // int i = 0;
+    // int j = 0;
+    // int len = ft_strlen(str);
+    return NULL;
+}
+
+static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
+{
+    size_t lenght = 0;
+    size_t start = tokenizer->pos;
+    char *quoted;
+    bool inQuote = false;
+    while (isspace(tokenizer->input[tokenizer->pos]))
+        tokenizer->pos++;
+    while (tokenizer->input[tokenizer->pos])
+    {
+        char c = tokenizer->input[tokenizer->pos];
+        if (!inQuote && (isspace(c) || is_operator(c)))
+            break;
+        if (c == '\'' || c == '"')
+        {
+            inQuote = !inQuote; 
+            quoted = extract_quoted(tokenizer, c);
+            printf("quoted: %s\n", quoted);
+            if (!quoted)
+                return "hamid";
+            lenght += ft_strlen(quoted);
+        }else
+        {
+            tokenizer->pos++;
+            lenght++;
+        }
+    }
+    inQuote = 0;
+    printf("lenght: %zu\n", lenght);
+    char *word = malloc(lenght + 1);
+    if (!word)
+        return NULL;
+    size_t i = 0;
+    tokenizer->pos = start;
+    while (isspace(tokenizer->input[tokenizer->pos]))
+        tokenizer->pos++;
+    while (tokenizer->input[tokenizer->pos])
+    {
+        char c = tokenizer->input[tokenizer->pos];
+        if (!inQuote && (isspace(c) || is_operator(c)))
+            break;
+    
+        if (c == '\'' || c == '"')
+        {
+            inQuote = !inQuote;
+            char *quoted = extract_quoted(tokenizer, c);
+            if (!quoted)
+            {
+                free(word);
+                return NULL;
+            }
+            size_t j = 0;
+            if (c == '"' &&  ft_strchr(quoted, '$'))
+            {
+                char *expanded = expand_variables(quoted, shell);
+                free(quoted);
+                quoted = expanded;
+            }
+            while (quoted[j])
+                word[i++] = quoted[j++];
+            free(quoted);
+        }
+        else
+        {
+            word[i++] = c;
+            tokenizer->pos++;
+        }
+    }
+    word[i] = '\0';
+    return word;
+}
+
+
 
 // Main tokenization function
-bool tokenize(t_tokenizer *tokenizer)
+bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
 {
     while (tokenizer->input[tokenizer->pos])
     {
@@ -254,7 +333,7 @@ bool tokenize(t_tokenizer *tokenizer)
         // Handle words
         else if (!isspace(c))
         {
-            char *value = extract_word(tokenizer);
+            char *value = extract_word(tokenizer, shell);
             token = create_token(TOKEN_WORD, value);
             free(value);
         }
@@ -436,7 +515,7 @@ void print_commands(t_command *commands)
 {
     while (commands)
     {
-        printf("Command:  %s\n", commands->command);
+        printf("Command: %s\n", commands->command);
         if (commands->args)
         {
             printf("  Args: ");
@@ -466,9 +545,9 @@ int main(int argc, char **argv, char **envp)
     printf("\033[H\033[J"); // Clear screen
     init_shell(&shell, envp);
     // builtin_env(&shell); // Rebuild environment if needed
-    builtin_cd(&shell, ".."); // Change to root directory
-    builtin_pwd(&shell); // Rebuild environment if needed
-    builtin_env(&shell); // Print environment variables
+    // builtin_cd(&shell, ".."); // Change to root directory
+    // builtin_pwd(&shell); // Rebuild environment if needed
+    // builtin_env(&shell); // Print environment variables
     while (1)
     {
         input = readline("minishell > ");
@@ -477,7 +556,7 @@ int main(int argc, char **argv, char **envp)
         if (*input)
             add_history(input);
         t_tokenizer *tokenizer = init_tokenizer(input);
-        if (tokenize(tokenizer))
+        if (tokenize(tokenizer, &shell))
         {
             // change the tokens linked list to a command linked list
             t_command *commands = parse_tokens(tokenizer->tokens);

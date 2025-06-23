@@ -6,7 +6,7 @@
 /*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/23 18:18:52 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/23 22:13:15 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include "./libft/libft.h"
 
 
 typedef struct s_env
@@ -78,12 +79,13 @@ typedef struct s_command
     char *output_file;   // Output redirection file
     bool append;         // Append mode for output redirection
     bool heredoc;        // Indicates if this command uses heredoc
+    char *heredoc_delimiter; // Delimiter for heredoc
     struct s_command *next; // Pointer to the next command in the pipeline
 } t_command;
 
 t_tokenizer *init_tokenizer(char *input);
 void free_tokenizer(t_tokenizer *tokenizer);
-bool tokenize(t_tokenizer *tokenizer);
+bool tokenize(t_tokenizer *tokenizer, t_shell *shell);
 t_token *create_token(t_token_type type, char *value);
 void add_token(t_tokenizer *tokenizer, t_token *token);
 
@@ -95,6 +97,7 @@ void init_shell(t_shell *shell, char **envp);
 
 // Built-in command functions
 int builtin_env(t_shell *shell);
+char *get_env_value(t_env *env, const char *key);
 int builtin_pwd(t_shell *shell);
 int builtin_cd(t_shell *shell, char *path);
 int updateOLDPWD(t_shell *shell, char *path);

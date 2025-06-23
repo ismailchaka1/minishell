@@ -12,15 +12,16 @@ bonus: ${NAME_BONUS}
 .SECONDARY: ${OBJS} ${OBJS_BONUS}
 
 ${NAME}: ${OBJS}
-	${CC} ${CFLAGS} ${OBJS} -o ${NAME} -lreadline
-
-${NAME_BONUS}: ${OBJS_BONUS}
-	${CC} ${CFLAGS} ${OBJS_BONUS} -o ${NAME_BONUS}
+	echo "Compiling LIBFT..."
+	@make -C ./libft
+	${CC} ${CFLAGS} ${OBJS} libft/libft.a -o ${NAME} -lreadline
 
 clean:
+	@make -C ./libft clean
 	${RM} ${OBJS} ${OBJS_BONUS}
 
 fclean: clean
+	@make -C ./libft fclean
 	${RM} ${NAME} ${NAME_BONUS}
 
 re: fclean all
