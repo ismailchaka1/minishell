@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/22 18:56:37 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/23 02:54:18 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -375,18 +375,40 @@ t_command *parse_tokens(t_token *tokens)
                 return NULL;
             }
             if (tokens->type == TOKEN_REDIRECT_IN)
-                current->input_file = strdup(tokens->next ? tokens->next->value : "");
+            {
+                // current->input_file is a double dimension array
+                if (!current->input_file)
+                {
+                    current->input_file = malloc(sizeof(char *) * 2);
+                    if (!current->input_file)
+                        return NULL;
+                    current->input_file[0] = strdup(tokens->next ? tokens->next->value : "");
+                    current->input_file[1] = NULL;
+                }else{
+                    int count = 0;
+                    while (current->input_file[count])
+                        count++;
+                    current->input_file = realloc(current->input_file, sizeof(char *) * (count + 2));
+                    if (!current->input_file)
+                        return NULL;
+                    current->input_file[count] = strdup(tokens->next ? tokens->next->value : "");
+                    current->input_file[count + 1] = NULL;
+                }
+            }
+                // current->input_file = strdup(tokens->next ? tokens->next->value : "");
             else if (tokens->type == TOKEN_REDIRECT_OUT)
-                current->output_file = strdup(tokens->next ? tokens->next->value : "");
+            {
+                // current->output_file = strdup(tokens->next ? tokens->next->value : "");
+            }
             else if (tokens->type == TOKEN_APPEND)
             {
-                current->output_file = strdup(tokens->next ? tokens->next->value : "");
-                current->append = true;
+                // current->output_file = strdup(tokens->next ? tokens->next->value : "");
+                // current->append = true;
             }
             else if (tokens->type == TOKEN_HEREDOC)
             {
                 current->heredoc = true;
-                current->input_file = strdup(tokens->next ? tokens->next->value : "");
+                // current->input_file = strdup(tokens->next ? tokens->next->value : "");
             }
             if (tokens->next)
                 tokens = tokens->next;
@@ -445,9 +467,19 @@ void print_commands(t_command *commands)
             printf("\n");
         }
         if (commands->input_file)
-            printf("  Input file: %s\n", commands->input_file);
+        {
+            for (int i = 0; commands->input_file[i]; i++)
+            {
+                printf("  Input file: %s\n", commands->input_file[i]);
+            }
+        }
         if (commands->output_file)
-            printf("  Output file: %s\n", commands->output_file);
+        {
+            for (int i = 0; commands->output_file[i]; i++)
+            {
+                printf("  Output file: %s\n", commands->output_file[i]);
+            }
+        }
         if (commands->append)
             printf("  Append mode: true\n");
         if (commands->heredoc)
@@ -466,7 +498,7 @@ int main(int argc, char **argv, char **envp)
     printf("\033[H\033[J"); // Clear screen
     init_shell(&shell, envp);
     // builtin_env(&shell); // Rebuild environment if needed
-    builtin_cd(&shell, ".."); // Change to root directory
+    // builtin_cd(&shell, ".."); // Change to root directory
     builtin_pwd(&shell); // Rebuild environment if needed
     builtin_env(&shell); // Print environment variables
     while (1)
@@ -484,8 +516,6 @@ int main(int argc, char **argv, char **envp)
             if (commands)
             {
                 print_commands(commands);
-                // execute_commands(&shell, commands);
-                // free_commands(commands);
             }
             free_tokenizer(tokenizer);
         }
