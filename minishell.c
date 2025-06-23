@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/23 02:54:18 by root             ###   ########.fr       */
+/*   Updated: 2025/06/23 18:10:10 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -288,6 +288,7 @@ t_command *parse_tokens(t_token *tokens)
 {
     t_command *head = NULL;
     t_command *current = NULL;
+    // t_command *prev = NULL;
 
     while (tokens && tokens->type != TOKEN_EOF)
     {
@@ -366,89 +367,117 @@ t_command *parse_tokens(t_token *tokens)
             }
         }else if (tokens->type == TOKEN_REDIRECT_IN || 
                   tokens->type == TOKEN_REDIRECT_OUT || 
-                  tokens->type == TOKEN_APPEND || 
-                  tokens->type == TOKEN_HEREDOC)
+                  tokens->type == TOKEN_APPEND)
         {
+        if (!current)
+        {
+            current = malloc(sizeof(t_command));
             if (!current)
-            {
-                printf("Error: Redirection without command\n");
                 return NULL;
-            }
-            if (tokens->type == TOKEN_REDIRECT_IN)
-            {
-                // current->input_file is a double dimension array
-                if (!current->input_file)
-                {
-                    current->input_file = malloc(sizeof(char *) * 2);
-                    if (!current->input_file)
-                        return NULL;
-                    current->input_file[0] = strdup(tokens->next ? tokens->next->value : "");
-                    current->input_file[1] = NULL;
-                }else{
-                    int count = 0;
-                    while (current->input_file[count])
-                        count++;
-                    current->input_file = realloc(current->input_file, sizeof(char *) * (count + 2));
-                    if (!current->input_file)
-                        return NULL;
-                    current->input_file[count] = strdup(tokens->next ? tokens->next->value : "");
-                    current->input_file[count + 1] = NULL;
-                }
-            }
-                // current->input_file = strdup(tokens->next ? tokens->next->value : "");
-            else if (tokens->type == TOKEN_REDIRECT_OUT)
-            {
-                // current->output_file = strdup(tokens->next ? tokens->next->value : "");
-            }
-            else if (tokens->type == TOKEN_APPEND)
-            {
-                // current->output_file = strdup(tokens->next ? tokens->next->value : "");
-                // current->append = true;
-            }
-            else if (tokens->type == TOKEN_HEREDOC)
-            {
-                current->heredoc = true;
-                // current->input_file = strdup(tokens->next ? tokens->next->value : "");
-            }
-            if (tokens->next)
-                tokens = tokens->next;
-        }else if (tokens->type == TOKEN_SINGLE_QUOTE || 
-                  tokens->type == TOKEN_DOUBLE_QUOTE)
+            current->command = NULL; // No command yet
+            current->args = NULL;
+            current->input_file = NULL;
+            current->output_file = NULL;
+            current->append = false;
+            current->heredoc = false;
+            current->next = NULL;
+            if (!head)
+                head = current;
+            else
+                head->next = current;
+        }
+        if (tokens->type == TOKEN_REDIRECT_IN)
         {
-            char *value = tokens->value ? strdup(tokens->value) : NULL;
-            if (!value)
+            // current->input_file is a double dimension array
+            if (!current->input_file)
             {
-                printf("Error: Quoted string without value\n");
-                return NULL;
+                current->input_file = malloc(sizeof(char *) * 2);
+                if (!current->input_file)
+                    return NULL;
+                current->input_file[0] = strdup(tokens->next ? tokens->next->value : "");
+                current->input_file[1] = NULL;
+            }else{
+                int count = 0;
+                while (current->input_file[count])
+                    count++;
+                current->input_file = realloc(current->input_file, sizeof(char *) * (count + 2));
+                if (!current->input_file)
+                    return NULL;
+                current->input_file[count] = strdup(tokens->next ? tokens->next->value : "");
+                current->input_file[count + 1] = NULL;
             }
-            if (current)
+        }
+            // current->input_file = strdup(tokens->next ? tokens->next->value : "");
+        else if (tokens->type == TOKEN_REDIRECT_OUT)
+        {
+            if (!current->output_file)
             {
-                current->args = realloc(current->args, sizeof(char *) * 2);
-                current->args[0] = value;
-                current->args[1] = NULL;
+                current->output_file = malloc(sizeof(char *) * 2);
+                if (!current->output_file)
+                    return NULL;
+                current->output_file[0] = strdup(tokens->next ? tokens->next->value : "");
+                current->output_file[1] = NULL;
             }
             else
             {
-                current = malloc(sizeof(t_command));
-                if (!current)
-                {
-                    free(value);
+                int count = 0;
+                while (current->output_file[count])
+                    count++;
+                current->output_file = realloc(current->output_file, sizeof(char *) * (count + 2));
+                if (!current->output_file)
                     return NULL;
-                }
-                current->command = value;
+                current->output_file[count] = strdup(tokens->next ? tokens->next->value : "");
+                current->output_file[count + 1] = NULL;
+            }
+            // current->output_file = strdup(tokens->next ? tokens->next->value : "");
+        }
+        else if (tokens->type == TOKEN_APPEND)
+        {
+            if (!current->output_file)
+            {
+                current->output_file = malloc(sizeof(char *) * 2);
+                if (!current->output_file)
+                    return NULL;
+                current->output_file[0] = strdup(tokens->next ? tokens->next->value : "");
+                current->output_file[1] = NULL;
+            }
+            else
+            {
+                int count = 0;
+                while (current->output_file[count])
+                    count++;
+                current->output_file = realloc(current->output_file, sizeof(char *) * (count + 2));
+                if (!current->output_file)
+                    return NULL;
+                current->output_file[count] = strdup(tokens->next ? tokens->next->value : "");
+                current->output_file[count + 1] = NULL;
+            }
+            current->append = true;
+            // current->output_file = strdup(tokens->next ? tokens->next->value : "");
+            // current->append = true;
+        }
+        else if (tokens->type == TOKEN_HEREDOC)
+        {
+            if (current)
+            {
+                current->next = malloc(sizeof(t_command));
+                if (!current)
+                    return NULL;
+                current = current->next;
+                current->command = NULL; // No command yet
                 current->args = NULL;
                 current->input_file = NULL;
                 current->output_file = NULL;
                 current->append = false;
-                current->heredoc = false;
+                current->heredoc = true; // Initialize heredoc flag
                 current->next = NULL;
-
-                if (!head)
-                    head = current;
-                else
-                    head->next = current;
             }
+            current->heredoc = true;
+            // current->input_file = strdup(tokens->next ? tokens->next->value : "");
         }
+        // if (tokens->next)
+        //     tokens = tokens->next;
+        // }
         tokens = tokens->next;
     }
     return head;
@@ -458,7 +487,8 @@ void print_commands(t_command *commands)
 {
     while (commands)
     {
-        printf("Command:  %s\n", commands->command);
+        if (commands->command)
+            printf("Command:  %s\n", commands->command);
         if (commands->args)
         {
             printf("  Args: ");
@@ -511,6 +541,7 @@ int main(int argc, char **argv, char **envp)
         t_tokenizer *tokenizer = init_tokenizer(input);
         if (tokenize(tokenizer))
         {
+            print_tokens(tokenizer->tokens);
             // change the tokens linked list to a command linked list
             t_command *commands = parse_tokens(tokenizer->tokens);
             if (commands)
