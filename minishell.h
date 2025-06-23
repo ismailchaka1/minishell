@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/23 02:52:08 by root             ###   ########.fr       */
+/*   Updated: 2025/06/23 18:18:52 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,8 +74,8 @@ typedef struct s_command
 {
     char *command;      // Command to execute
     char **args;         // Arguments for the command
-    char **input_file;    // Input redirection file
-    char **output_file;   // Output redirection file
+    char *input_file;    // Input redirection file
+    char *output_file;   // Output redirection file
     bool append;         // Append mode for output redirection
     bool heredoc;        // Indicates if this command uses heredoc
     struct s_command *next; // Pointer to the next command in the pipeline
