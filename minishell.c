@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/24 00:24:42 by root             ###   ########.fr       */
+/*   Updated: 2025/06/24 19:42:31 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -278,7 +278,7 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
                 return NULL;
             }
             size_t j = 0;
-            if (c == '"' && ft_strchr(quoted, '$'))
+            if ((c == '"' && ft_strchr(quoted, '$')))
             {
                 printf("Expanding variables in: %s\n", quoted);
                 char *expanded = expand_variables(quoted, shell);
@@ -291,6 +291,8 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
         }
         else
         {
+            if (isspace(c) || is_operator(c))
+                break;
             word[i++] = c;
             tokenizer->pos++;
         }
@@ -571,6 +573,42 @@ void print_commands(t_command *commands)
     }
 }
 
+int is_builtin_command(const char *command)
+{
+    return (strcmp(command, "cd") == 0 || 
+            strcmp(command, "env") == 0 || 
+            strcmp(command, "pwd") == 0 /* || 
+            strcmp(command, "exit") == 0 */);
+}
+
+void execute_commands(t_shell *shell, t_command *commands)
+{
+    // This function should handle the execution of commands
+    // For now, we will just print the commands
+    while (commands)
+    {
+        if (is_builtin_command(commands->command))
+        {
+            // Call the appropriate built-in command function
+            if (strcmp(commands->command, "cd") == 0)
+                builtin_cd(shell, commands->args);
+            else if (strcmp(commands->command, "env") == 0)
+                builtin_env(shell);
+            else if (strcmp(commands->command, "pwd") == 0)
+                builtin_pwd(shell);
+            // else if (strcmp(commands->command, "exit") == 0)
+                // builtin_exit(shell, commands->args);
+        }
+        else
+        {
+            // Execute external command using execve or similar
+            printf("Executing external command: %s\n", commands->command);
+            // Here you would implement the actual execution logic
+        }
+        commands = commands->next;
+    }
+}
+
 int main(int argc, char **argv, char **envp)
 {
     char *input;
@@ -599,7 +637,7 @@ int main(int argc, char **argv, char **envp)
             if (commands)
             {
                 print_commands(commands);
-                // execute_commands(&shell, commands);
+                execute_commands(&shell, commands);
                 // free_commands(commands);
             }
             free_tokenizer(tokenizer);

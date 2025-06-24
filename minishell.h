@@ -6,7 +6,7 @@
 /*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/23 22:13:15 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/24 17:12:47 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,7 +99,7 @@ void init_shell(t_shell *shell, char **envp);
 int builtin_env(t_shell *shell);
 char *get_env_value(t_env *env, const char *key);
 int builtin_pwd(t_shell *shell);
-int builtin_cd(t_shell *shell, char *path);
+int builtin_cd(t_shell *shell, char **path);
 int updateOLDPWD(t_shell *shell, char *path);
 
 #endif // MINISHELL_H
