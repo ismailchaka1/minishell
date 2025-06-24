@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   cd.c                                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/17 22:47:58 by root              #+#    #+#             */
-/*   Updated: 2025/06/24 19:47:55 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/24 20:12:51 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,20 @@ int builtin_cd(t_shell *shell, char **args)
     }
     if (args && args[1])
         return (fprintf(stderr, "cd: too many arguments\n"), 1);
-    if (
-        (!args || !args[0]) || 
-        ((args[0][0] == '~' && args[0][1] == '\0') && getenv("HOME") && chdir(getenv("HOME")) != 0)
-    );
+    if (!args || (args[0][0] == '~' && args[0][1] == '\0'))
+    {
+        char *home = getenv("HOME");
+        if (!home)
+        {
+            fprintf(stderr, "cd: HOME not set\n");
+            return 1;
+        }
+        if (chdir(home) != 0)
+        {
+            perror("cd");
+            // return 1;
+        }
+    }
     else if (args && args[0] && chdir(args[0]) != 0)
     {
         perror("cd");

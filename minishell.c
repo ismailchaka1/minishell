@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/24 19:42:31 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/24 20:50:59 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -230,6 +230,7 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
 {
     size_t lenght = 0;
     size_t start = tokenizer->pos;
+    size_t k = 0;
     char *quoted;
     bool inQuote = false;
     while (isspace(tokenizer->input[tokenizer->pos]))
@@ -243,11 +244,24 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
         {
             inQuote = !inQuote; 
             quoted = extract_quoted(tokenizer, c);
-            printf("quoted: %s\n", quoted);
+            printf("quoted: %s|\n", quoted);
             if (!quoted)
                 return "hamid";
             lenght += ft_strlen(quoted);
-        }else
+        }else if (c == '$')
+        {
+            // Removed assignment to unused variable 'j'
+            k = tokenizer->pos;
+            while (ft_isalnum(tokenizer->input[tokenizer->pos + 1]) || 
+                   tokenizer->input[tokenizer->pos + 1] == '_')
+                tokenizer->pos++;
+            // Handle variable expansion
+            char *expanded = expand_variables(tokenizer->input + k, shell);
+            printf("expanded: %s\n", expanded);
+            lenght += ft_strlen(expanded);
+            k = 0;
+        }
+        else
         {
             tokenizer->pos++;
             lenght++;
@@ -356,12 +370,14 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
             char *value = extract_quoted(tokenizer, '\'');
             if (!value)
                 return false;
+            printf("value SINGLE: %s|\n", value);
             token = create_token(TOKEN_SINGLE_QUOTE, value);
             free(value);
         }
         else if (c == '"')
         {
             char *value = extract_quoted(tokenizer, '"');
+            printf("value DOUBLE: %s|\n", value);
             char *expanded_value = expand_variables(value, shell);
             if (!value)
                 return false;
