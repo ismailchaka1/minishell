@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/23 22:14:15 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/24 00:24:42 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,11 +184,45 @@ static char *extract_quoted(t_tokenizer *tokenizer, char quote)
 }
 char *expand_variables(char *str, t_shell *shell)
 {
-    (void)shell; // Unused parameter
-    (void)str; // Unused parameter
-    // int i = 0;
-    // int j = 0;
-    // int len = ft_strlen(str);
+    size_t i = 0;
+    size_t len;
+
+    len = ft_strlen(str);
+    while (i < len)
+    {
+        if (str[i] == '$')
+        {
+            size_t j = i + 1;
+            while (j < len && (ft_isalnum(str[j]) || str[j] == '_'))
+                j++;
+            char *var_name = strndup(str + i + 1, j - i - 1);
+            char *var_value = get_env_value(shell->env, var_name);
+            free(var_name);
+            if (var_value)
+            {
+                // Replace variable with its value
+                size_t var_len = ft_strlen(var_value);
+                char *new_str = malloc(len - (j - i) + var_len + 1);
+                if (!new_str)
+                    return NULL;
+                strncpy(new_str, str, i);
+                strcpy(new_str + i, var_value);
+                strcpy(new_str + i + var_len, str + j);
+                return new_str;
+            }else
+            {
+                // Variable not found, just skip it
+                char *new_str = malloc(len - (j - i) + 1);
+                if (!new_str)
+                    return NULL;
+                strncpy(new_str, str, i);
+                strcpy(new_str + i, str + j);
+                return new_str;
+            }
+        }else{
+            i++;
+        }
+    }
     return NULL;
 }
 
@@ -244,8 +278,9 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
                 return NULL;
             }
             size_t j = 0;
-            if (c == '"' &&  ft_strchr(quoted, '$'))
+            if (c == '"' && ft_strchr(quoted, '$'))
             {
+                printf("Expanding variables in: %s\n", quoted);
                 char *expanded = expand_variables(quoted, shell);
                 free(quoted);
                 quoted = expanded;
@@ -325,9 +360,10 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
         else if (c == '"')
         {
             char *value = extract_quoted(tokenizer, '"');
+            char *expanded_value = expand_variables(value, shell);
             if (!value)
                 return false;
-            token = create_token(TOKEN_DOUBLE_QUOTE, value);
+            token = create_token(TOKEN_DOUBLE_QUOTE, expanded_value);
             free(value);
         }
         // Handle words
