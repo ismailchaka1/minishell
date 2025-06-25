@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/24 17:12:47 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/06/24 23:21:09 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,7 +60,8 @@ typedef struct s_token
 {
     t_token_type type;   // Type of token
     char *value;         // Token string content
-    struct s_token *next; // Linked list pointer
+    struct s_token *next; // Linked list 
+    struct s_token *prev; // Pointer to previous token (for bidirectional traversal)
 } t_token;
 
 typedef struct s_tokenizer

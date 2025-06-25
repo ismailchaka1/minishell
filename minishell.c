@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/24 20:50:59 by root             ###   ########.fr       */
+/*   Updated: 2025/06/24 23:48:43 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,6 +141,7 @@ t_token *create_token(t_token_type type, char *value)
     token->type = type;
     token->value = value ? strdup(value) : NULL;
     token->next = NULL;
+    token->prev = NULL; // ← initialize prev
     return token;
 }
 
@@ -148,13 +149,16 @@ t_token *create_token(t_token_type type, char *value)
 void add_token(t_tokenizer *tokenizer, t_token *token)
 {
     if (!tokenizer->tokens)
+    {
         tokenizer->tokens = token;
+    }
     else
     {
         t_token *current = tokenizer->tokens;
         while (current->next)
             current = current->next;
         current->next = token;
+        token->prev = current;
     }
 }
 
@@ -185,137 +189,134 @@ static char *extract_quoted(t_tokenizer *tokenizer, char quote)
 char *expand_variables(char *str, t_shell *shell)
 {
     size_t i = 0;
-    size_t len;
+    char *result = ft_strdup("");
+    if (!result)
+        return NULL;
 
-    len = ft_strlen(str);
-    while (i < len)
+    while (str[i])
     {
-        if (str[i] == '$')
+        if (str[i] == '$' && (ft_isalpha(str[i + 1]) || str[i + 1] == '_'))
         {
             size_t j = i + 1;
-            while (j < len && (ft_isalnum(str[j]) || str[j] == '_'))
+            while (ft_isalnum(str[j]) || str[j] == '_')
                 j++;
-            char *var_name = strndup(str + i + 1, j - i - 1);
+
+            char *var_name = ft_substr(str, i + 1, j - (i + 1));
+            if (!var_name)
+                return (free(result), NULL);
+
             char *var_value = get_env_value(shell->env, var_name);
             free(var_name);
-            if (var_value)
-            {
-                // Replace variable with its value
-                size_t var_len = ft_strlen(var_value);
-                char *new_str = malloc(len - (j - i) + var_len + 1);
-                if (!new_str)
-                    return NULL;
-                strncpy(new_str, str, i);
-                strcpy(new_str + i, var_value);
-                strcpy(new_str + i + var_len, str + j);
-                return new_str;
-            }else
-            {
-                // Variable not found, just skip it
-                char *new_str = malloc(len - (j - i) + 1);
-                if (!new_str)
-                    return NULL;
-                strncpy(new_str, str, i);
-                strcpy(new_str + i, str + j);
-                return new_str;
-            }
-        }else{
-            i++;
+
+            if (!var_value)
+                var_value = "";
+
+            char *before = ft_substr(str, 0, i);
+            char *after = ft_strdup(str + j);
+            char *temp1 = ft_strjoin(before, var_value);
+            char *new_str = ft_strjoin(temp1, after);
+
+            free(before);
+            free(after);
+            free(temp1);
+            free(result);
+            result = new_str;
+            str = result;
+            i = i + ft_strlen(var_value); // Move past the inserted variable
         }
+        else
+            i++;
     }
-    return NULL;
+    return result;
 }
 
 static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
 {
-    size_t lenght = 0;
-    size_t start = tokenizer->pos;
-    size_t k = 0;
-    char *quoted;
+    char *word = ft_strdup("");
+    if (!word) return NULL;
+
+    while (isspace(tokenizer->input[tokenizer->pos]))
+        tokenizer->pos++;
+
     bool inQuote = false;
-    while (isspace(tokenizer->input[tokenizer->pos]))
-        tokenizer->pos++;
+
     while (tokenizer->input[tokenizer->pos])
     {
         char c = tokenizer->input[tokenizer->pos];
+
         if (!inQuote && (isspace(c) || is_operator(c)))
             break;
-        if (c == '\'' || c == '"')
-        {
-            inQuote = !inQuote; 
-            quoted = extract_quoted(tokenizer, c);
-            printf("quoted: %s|\n", quoted);
-            if (!quoted)
-                return "hamid";
-            lenght += ft_strlen(quoted);
-        }else if (c == '$')
-        {
-            // Removed assignment to unused variable 'j'
-            k = tokenizer->pos;
-            while (ft_isalnum(tokenizer->input[tokenizer->pos + 1]) || 
-                   tokenizer->input[tokenizer->pos + 1] == '_')
-                tokenizer->pos++;
-            // Handle variable expansion
-            char *expanded = expand_variables(tokenizer->input + k, shell);
-            printf("expanded: %s\n", expanded);
-            lenght += ft_strlen(expanded);
-            k = 0;
-        }
-        else
-        {
-            tokenizer->pos++;
-            lenght++;
-        }
-    }
-    inQuote = 0;
-    printf("lenght: %zu\n", lenght);
-    char *word = malloc(lenght + 1);
-    if (!word)
-        return NULL;
-    size_t i = 0;
-    tokenizer->pos = start;
-    while (isspace(tokenizer->input[tokenizer->pos]))
-        tokenizer->pos++;
-    while (tokenizer->input[tokenizer->pos])
-    {
-        char c = tokenizer->input[tokenizer->pos];
-        if (!inQuote && (isspace(c) || is_operator(c)))
-            break;
-    
+
         if (c == '\'' || c == '"')
         {
             inQuote = !inQuote;
             char *quoted = extract_quoted(tokenizer, c);
+            printf("Quoted: %s|\n", quoted ? quoted : "NULL");
             if (!quoted)
+                return (free(word), NULL);
+            // Expand if double-quoted or contains $
+            if (c == '"' && ft_strchr(quoted, '$'))
             {
-                free(word);
-                return NULL;
-            }
-            size_t j = 0;
-            if ((c == '"' && ft_strchr(quoted, '$')))
-            {
-                printf("Expanding variables in: %s\n", quoted);
                 char *expanded = expand_variables(quoted, shell);
                 free(quoted);
                 quoted = expanded;
             }
-            while (quoted[j])
-                word[i++] = quoted[j++];
+
+            char *temp = ft_strjoin(word, quoted);
             free(quoted);
+            free(word);
+            word = temp;
+        }
+        else if (c == '$')
+        {
+            tokenizer->pos++; // move past '$'
+            size_t start = tokenizer->pos;
+
+            // Must start with letter or _
+            if (ft_isalpha(tokenizer->input[start]) || tokenizer->input[start] == '_')
+            {
+                while (ft_isalnum(tokenizer->input[tokenizer->pos]) || tokenizer->input[tokenizer->pos] == '_')
+                    tokenizer->pos++;
+
+                size_t len = tokenizer->pos - start;
+                char *var_name = ft_substr(tokenizer->input, start, len);
+                char *var_value = get_env_value(shell->env, var_name);
+                free(var_name);
+
+                if (!var_value)
+                    var_value = "";
+
+                char *temp = ft_strjoin(word, var_value);
+                free(word);
+                word = temp;
+            }
+            else
+            {
+                // '$' not followed by valid var name, treat as literal '$'
+                char *temp = ft_strjoin(word, "$");
+                free(word);
+                word = temp;
+            }
         }
         else
         {
-            if (isspace(c) || is_operator(c))
-                break;
-            word[i++] = c;
+            if (!isspace(tokenizer->input[tokenizer->pos]) && !is_operator(tokenizer->input[tokenizer->pos]))
+            {
+                char temp_str[2] = { c, '\0' };
+                char *temp = ft_strjoin(word, temp_str);
+                free(word);
+                word = temp;
+            }
+            char temp_str[2] = { tokenizer->input[tokenizer->pos], '\0' };
+            char *temp = ft_strjoin(word, temp_str);
+            free(word);
+            word = temp;
             tokenizer->pos++;
         }
     }
-    word[i] = '\0';
+
     return word;
 }
-
-
 
 // Main tokenization function
 bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
@@ -367,7 +368,7 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
         // Handle quotes
         else if (c == '\'')
         {
-            char *value = extract_quoted(tokenizer, '\'');
+            char *value = extract_word(tokenizer, shell);
             if (!value)
                 return false;
             printf("value SINGLE: %s|\n", value);
@@ -376,12 +377,10 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
         }
         else if (c == '"')
         {
-            char *value = extract_quoted(tokenizer, '"');
-            printf("value DOUBLE: %s|\n", value);
-            char *expanded_value = expand_variables(value, shell);
+            char *value = extract_word(tokenizer, shell);
             if (!value)
                 return false;
-            token = create_token(TOKEN_DOUBLE_QUOTE, expanded_value);
+            token = create_token(TOKEN_DOUBLE_QUOTE, value);
             free(value);
         }
         // Handle words
@@ -411,10 +410,35 @@ void print_tokens(t_token *tokens)
 {
     while (tokens)
     {
-        printf("Type: %d, Value: %s\n", tokens->type, 
+        printf("Type: %d, Value: %s|\n", tokens->type, 
                tokens->value ? tokens->value : "NULL");
         tokens = tokens->next;
     }
+}
+
+static void add_arg(t_command *current, char *arg)
+{
+    size_t count = 0;
+
+    // Count existing args
+    if (current->args)
+    {
+        while (current->args[count])
+            count++;
+    }
+
+    // Realloc to add new arg + NULL
+    char **new_args = malloc(sizeof(char *) * (count + 2));
+    if (!new_args)
+        return;
+
+    for (size_t i = 0; i < count; i++)
+        new_args[i] = current->args[i];
+    new_args[count] = arg;
+    new_args[count + 1] = NULL;
+
+    free(current->args);
+    current->args = new_args;
 }
 
 t_command *parse_tokens(t_token *tokens)
@@ -534,9 +558,7 @@ t_command *parse_tokens(t_token *tokens)
             }
             if (current)
             {
-                current->args = realloc(current->args, sizeof(char *) * 2);
-                current->args[0] = value;
-                current->args[1] = NULL;
+                add_arg(current, value);
             }
             else
             {
@@ -574,7 +596,7 @@ void print_commands(t_command *commands)
         {
             printf("  Args: ");
             for (int i = 0; commands->args[i]; i++)
-                printf("%s ", commands->args[i]);
+                printf("%d %s|\n", i, commands->args[i]);
             printf("\n");
         }
         if (commands->input_file)
@@ -648,6 +670,7 @@ int main(int argc, char **argv, char **envp)
         t_tokenizer *tokenizer = init_tokenizer(input);
         if (tokenize(tokenizer, &shell))
         {
+            print_tokens(tokenizer->tokens);
             // change the tokens linked list to a command linked list
             t_command *commands = parse_tokens(tokenizer->tokens);
             if (commands)
