@@ -300,14 +300,7 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
         }
         else
         {
-            if (!isspace(tokenizer->input[tokenizer->pos]) && !is_operator(tokenizer->input[tokenizer->pos]))
-            {
-                char temp_str[2] = { c, '\0' };
-                char *temp = ft_strjoin(word, temp_str);
-                free(word);
-                word = temp;
-            }
-            char temp_str[2] = { tokenizer->input[tokenizer->pos], '\0' };
+            char temp_str[2] = { c, '\0' };
             char *temp = ft_strjoin(word, temp_str);
             free(word);
             word = temp;
