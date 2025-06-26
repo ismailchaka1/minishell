@@ -195,7 +195,29 @@ char *expand_variables(char *str, t_shell *shell)
 
     while (str[i])
     {
-        if (str[i] == '$' && (ft_isalpha(str[i + 1]) || str[i + 1] == '_'))
+        if (str[i] == '$' && str[i + 1] == '?')
+        {
+            // Handle $? (exit status)
+            char *exit_status_str = ft_itoa(shell->exit_status);
+            if (!exit_status_str)
+                return (free(result), NULL);
+
+            size_t exit_status_len = ft_strlen(exit_status_str);
+            char *before = ft_substr(str, 0, i);
+            char *after = ft_strdup(str + i + 2); // Skip '$?'
+            char *temp1 = ft_strjoin(before, exit_status_str);
+            char *new_str = ft_strjoin(temp1, after);
+
+            free(before);
+            free(after);
+            free(temp1);
+            free(exit_status_str);
+            free(result);
+            result = new_str;
+            str = result;
+            i = i + exit_status_len; // Move past the inserted exit status
+        }
+        else if (str[i] == '$' && (ft_isalpha(str[i + 1]) || str[i + 1] == '_'))
         {
             size_t j = i + 1;
             while (ft_isalnum(str[j]) || str[j] == '_')
@@ -235,26 +257,25 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
     char *word = ft_strdup("");
     if (!word) return NULL;
 
+    // Skip leading whitespace
     while (isspace(tokenizer->input[tokenizer->pos]))
         tokenizer->pos++;
-
-    bool inQuote = false;
 
     while (tokenizer->input[tokenizer->pos])
     {
         char c = tokenizer->input[tokenizer->pos];
 
-        if (!inQuote && (isspace(c) || is_operator(c)))
+        // Stop at whitespace or operators when not in quotes
+        if (isspace(c) || is_operator(c))
             break;
 
         if (c == '\'' || c == '"')
         {
-            inQuote = !inQuote;
             char *quoted = extract_quoted(tokenizer, c);
-            printf("Quoted: %s|\n", quoted ? quoted : "NULL");
             if (!quoted)
                 return (free(word), NULL);
-            // Expand if double-quoted or contains $
+            
+            // Expand if double-quoted and contains $
             if (c == '"' && ft_strchr(quoted, '$'))
             {
                 char *expanded = expand_variables(quoted, shell);
@@ -270,32 +291,49 @@ static char *extract_word(t_tokenizer *tokenizer, t_shell *shell)
         else if (c == '$')
         {
             tokenizer->pos++; // move past '$'
-            size_t start = tokenizer->pos;
-
-            // Must start with letter or _
-            if (ft_isalpha(tokenizer->input[start]) || tokenizer->input[start] == '_')
+            
+            // Handle $? (exit status)
+            if (tokenizer->input[tokenizer->pos] == '?')
             {
-                while (ft_isalnum(tokenizer->input[tokenizer->pos]) || tokenizer->input[tokenizer->pos] == '_')
-                    tokenizer->pos++;
-
-                size_t len = tokenizer->pos - start;
-                char *var_name = ft_substr(tokenizer->input, start, len);
-                char *var_value = get_env_value(shell->env, var_name);
-                free(var_name);
-
-                if (!var_value)
-                    var_value = "";
-
-                char *temp = ft_strjoin(word, var_value);
+                tokenizer->pos++; // move past '?'
+                char *exit_status_str = ft_itoa(shell->exit_status);
+                if (!exit_status_str)
+                    return (free(word), NULL);
+                
+                char *temp = ft_strjoin(word, exit_status_str);
+                free(exit_status_str);
                 free(word);
                 word = temp;
             }
             else
             {
-                // '$' not followed by valid var name, treat as literal '$'
-                char *temp = ft_strjoin(word, "$");
-                free(word);
-                word = temp;
+                size_t start = tokenizer->pos;
+
+                // Must start with letter or _
+                if (ft_isalpha(tokenizer->input[start]) || tokenizer->input[start] == '_')
+                {
+                    while (ft_isalnum(tokenizer->input[tokenizer->pos]) || tokenizer->input[tokenizer->pos] == '_')
+                        tokenizer->pos++;
+
+                    size_t len = tokenizer->pos - start;
+                    char *var_name = ft_substr(tokenizer->input, start, len);
+                    char *var_value = get_env_value(shell->env, var_name);
+                    free(var_name);
+
+                    if (!var_value)
+                        var_value = "";
+
+                    char *temp = ft_strjoin(word, var_value);
+                    free(word);
+                    word = temp;
+                }
+                else
+                {
+                    // '$' not followed by valid var name, treat as literal '$'
+                    char *temp = ft_strjoin(word, "$");
+                    free(word);
+                    word = temp;
+                }
             }
         }
         else
@@ -622,11 +660,20 @@ void execute_commands(t_shell *shell, t_command *commands)
         {
             // Call the appropriate built-in command function
             if (strcmp(commands->command, "cd") == 0)
+            {
                 builtin_cd(shell, commands->args);
+                shell->exit_status = 0; // Assume success for now
+            }
             else if (strcmp(commands->command, "env") == 0)
+            {
                 builtin_env(shell);
+                shell->exit_status = 0; // Assume success for now
+            }
             else if (strcmp(commands->command, "pwd") == 0)
+            {
                 builtin_pwd(shell);
+                shell->exit_status = 0; // Assume success for now
+            }
             // else if (strcmp(commands->command, "exit") == 0)
                 // builtin_exit(shell, commands->args);
         }
@@ -635,6 +682,7 @@ void execute_commands(t_shell *shell, t_command *commands)
             // Execute external command using execve or similar
             printf("Executing external command: %s\n", commands->command);
             // Here you would implement the actual execution logic
+            shell->exit_status = 0; // Assume success for now
         }
         commands = commands->next;
     }
