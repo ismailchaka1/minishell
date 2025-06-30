@@ -72,15 +72,25 @@ typedef struct s_tokenizer
 } t_tokenizer;
 
 // generate me linked list of command that will be executed in execve and hande me redirection and pipes and heredocs
+typedef struct s_redirect
+{
+    char *filename;         // Redirection filename
+    int type;              // 0 = input, 1 = output, 2 = append, 3 = heredoc
+    bool quoted_delimiter; // For heredoc: true if delimiter was quoted
+    struct s_redirect *next;
+} t_redirect;
+
 typedef struct s_command
 {
-    char *command;      // Command to execute
-    char **args;         // Arguments for the command
-    char *input_file;    // Input redirection file
-    char *output_file;   // Output redirection file
-    bool append;         // Append mode for output redirection
-    bool heredoc;        // Indicates if this command uses heredoc
+    char *command;          // Command to execute
+    char **args;            // Arguments for the command
+    t_redirect *redirects;  // List of all redirections
+    char *input_file;       // Input redirection file (for backward compatibility)
+    char *output_file;      // Output redirection file (for backward compatibility)
+    bool append;            // Append mode for output redirection (for backward compatibility)
+    bool heredoc;           // Indicates if this command uses heredoc (for backward compatibility)
     char *heredoc_delimiter; // Delimiter for heredoc
+    bool heredoc_expand;
     struct s_command *next; // Pointer to the next command in the pipeline
 } t_command;
 
@@ -89,6 +99,10 @@ void free_tokenizer(t_tokenizer *tokenizer);
 bool tokenize(t_tokenizer *tokenizer, t_shell *shell);
 t_token *create_token(t_token_type type, char *value);
 void add_token(t_tokenizer *tokenizer, t_token *token);
+
+// Command parsing and management functions
+t_command *parse_tokens(t_token *tokens);
+void free_commands(t_command *commands);
 
 // Environment management functions
 t_env *init_env(t_env *env, char **envp);
@@ -102,5 +116,22 @@ char *get_env_value(t_env *env, const char *key);
 int builtin_pwd(t_shell *shell);
 int builtin_cd(t_shell *shell, char **path);
 int updateOLDPWD(t_shell *shell, char *path);
+
+// Signal handling functions
+void setup_interactive_signals(void);
+void setup_execution_signals(void);
+void setup_heredoc_signals(void);
+
+// Redirection management functions
+t_redirect *create_redirect(char *filename, int type);
+t_redirect *create_redirect_with_quotes(char *filename, int type, bool quoted);
+void add_redirect(t_command *command, t_redirect *redirect);
+void free_redirects(t_redirect *redirects);
+
+// Standalone redirection functions
+int handle_standalone_redirections(t_command *command, t_shell *shell);
+int handle_output_redirection(char *filename, bool append);
+int handle_input_redirection(char *filename);
+int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell);
 
 #endif // MINISHELL_H
