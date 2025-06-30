@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/24 23:21:09 by root             ###   ########.fr       */
+/*   Updated: 2025/06/30 18:51:08 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,6 +91,7 @@ typedef struct s_command
     bool heredoc;           // Indicates if this command uses heredoc (for backward compatibility)
     char *heredoc_delimiter; // Delimiter for heredoc
     bool heredoc_expand;
+    char *path;            // Full path to the command (if found in PATH)
     struct s_command *next; // Pointer to the next command in the pipeline
 } t_command;
 
@@ -133,5 +134,14 @@ int handle_standalone_redirections(t_command *command, t_shell *shell);
 int handle_output_redirection(char *filename, bool append);
 int handle_input_redirection(char *filename);
 int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell);
+
+
+// Start of execution
+void execute_external_command(t_command *commands, t_shell *shell);
+void execute_single_command(t_command *command, t_shell *shell, int input_fd, int output_fd);
+void execute_pipeline(t_command *commands, t_shell *shell);
+char **create_args_array(t_command *command);
+int execute_builtin(t_command *command, t_shell *shell, int input_fd, int output_fd);
+int is_builtin_command(const char *command);
 
 #endif // MINISHELL_H

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/24 23:48:43 by root             ###   ########.fr       */
+/*   Updated: 2025/06/30 19:08:22 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1053,6 +1053,49 @@ void print_commands(t_command *commands)
     }
 }
 
+// Execute a builtin command with redirected stdin/stdout
+int execute_builtin(t_command *command, t_shell *shell, int input_fd, int output_fd)
+{
+    int original_stdin = -1;
+    int original_stdout = -1;
+    int result = 0;
+    (void)input_fd; // Suppress unused variable warning
+    (void)output_fd; // Suppress unused variable warning
+    // Execute the builtin command
+    if (strcmp(command->command, "cd") == 0)
+    {
+        result = builtin_cd(shell, command->args);
+    }
+    else if (strcmp(command->command, "env") == 0)
+    {
+        result = builtin_env(shell);
+    }
+    else if (strcmp(command->command, "pwd") == 0)
+    {
+        result = builtin_pwd(shell);
+    }
+    else if (strcmp(command->command, "exit") == 0)
+    {
+        shell->exit_status = -1;
+        result = 0;
+    }
+    
+    // Restore original stdin/stdout if we redirected
+    if (original_stdin != -1)
+    {
+        dup2(original_stdin, STDIN_FILENO);
+        close(original_stdin);
+    }
+    
+    if (original_stdout != -1)
+    {
+        dup2(original_stdout, STDOUT_FILENO);
+        close(original_stdout);
+    }
+    
+    return result;
+}
+
 int is_builtin_command(const char *command)
 {
     return (strcmp(command, "cd") == 0 || 
@@ -1063,13 +1106,33 @@ int is_builtin_command(const char *command)
 
 void execute_commands(t_shell *shell, t_command *commands)
 {
-    while (commands)
+    t_command *current = commands;
+
+    while (current)
     {
+        t_command *next_command = NULL;
+        // Check if this is part of a pipeline
+        if (current->next)
+        {
+            // This is part of a pipeline - both builtins and external commands can be part of it
+            printf("Executing pipeline starting with: %s\n", current->command);
+            execute_external_command(current, shell);
+            
+            // Skip to the end of this pipeline
+            next_command = current;
+            while (next_command && next_command->next && next_command->next->command)
+                next_command = next_command->next;
+            
+            // Move to the command after the pipeline
+            current = next_command->next;
+            continue;
+        }
+        
         // Handle standalone redirections (no command)
-        if (!commands->command)
+        if (!current->command)
         {
             printf("Executing standalone redirections...\n");
-            if (handle_standalone_redirections(commands, shell) != 0)
+            if (handle_standalone_redirections(current, shell) != 0)
             {
                 shell->exit_status = 1;
             }
@@ -1077,52 +1140,33 @@ void execute_commands(t_shell *shell, t_command *commands)
             {
                 shell->exit_status = 0;
             }
-            commands = commands->next;
+            current = current->next;
             continue;
         }
         
         // Validate command before execution
-        if (commands->command[0] == '\0')
+        if (current->command[0] == '\0')
         {
             printf("Error: Cannot execute empty command\n");
             shell->exit_status = 1;
-            commands = commands->next;
+            current = current->next;
             continue;
         }
         
-        if (is_builtin_command(commands->command))
+        if (is_builtin_command(current->command))
         {
-            // Call the appropriate built-in command function
-            if (strcmp(commands->command, "cd") == 0)
-            {
-                builtin_cd(shell, commands->args);
-                shell->exit_status = 0; // Assume success for now
-            }
-            else if (strcmp(commands->command, "env") == 0)
-            {
-                builtin_env(shell);
-                shell->exit_status = 0; // Assume success for now
-            }
-            else if (strcmp(commands->command, "pwd") == 0)
-            {
-                builtin_pwd(shell);
-                shell->exit_status = 0; // Assume success for now
-            }
-            else if (strcmp(commands->command, "exit") == 0)
-            {
-                // Set exit flag instead of calling exit() directly
-                shell->exit_status = -1; // Use -1 to indicate exit request
-            }
+            // Call the builtin command function with standard input/output
+            printf("Executing builtin command: %s\n", current->command);
+            int result = execute_builtin(current, shell, STDIN_FILENO, STDOUT_FILENO);
+            shell->exit_status = result;
         }
         else
         {
             // Execute external command using execve or similar
-            // setup_execution_signals(); // Setup signals for child process execution
-            printf("Executing external command: %s\n", commands->command);
-            // Here you would implement the actual execution logic
-            shell->exit_status = 0; // Assume success for now
+            printf("Executing external command: %s\n", current->command);
+            execute_external_command(current, shell);
         }
-        commands = commands->next;
+        current = current->next;
     }
 }
 

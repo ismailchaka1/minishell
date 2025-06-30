@@ -1,4 +1,4 @@
-SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c
+SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c execution.c
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc
