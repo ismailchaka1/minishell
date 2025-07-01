@@ -23,6 +23,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "./libft/libft.h"
@@ -128,6 +129,7 @@ t_redirect *create_redirect(char *filename, int type);
 t_redirect *create_redirect_with_quotes(char *filename, int type, bool quoted);
 void add_redirect(t_command *command, t_redirect *redirect);
 void free_redirects(t_redirect *redirects);
+int handle_redirections(t_command *command);
 
 // Standalone redirection functions
 int handle_standalone_redirections(t_command *command, t_shell *shell);
@@ -141,7 +143,7 @@ void execute_external_command(t_command *commands, t_shell *shell);
 void execute_single_command(t_command *command, t_shell *shell, int input_fd, int output_fd);
 void execute_pipeline(t_command *commands, t_shell *shell);
 char **create_args_array(t_command *command);
-int execute_builtin(t_command *command, t_shell *shell, int input_fd, int output_fd);
+int execute_builtin(t_command *command, t_shell *shell);
 int is_builtin_command(const char *command);
 
 #endif // MINISHELL_H

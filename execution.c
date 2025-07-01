@@ -162,19 +162,13 @@ char **create_args_array(t_command *command)
 // Execute a single command with redirected input/output if needed
 void execute_single_command(t_command *command, t_shell *shell, int input_fd, int output_fd)
 {
+    (void)input_fd; // Unused parameter
+    (void)output_fd; // Unused parameter
     // Check if this is a builtin command
     if (is_builtin_command(command->command))
     {
-        // Execute builtin with input/output redirection
-        int result = execute_builtin(command, shell, input_fd, output_fd);
+        int result = execute_builtin(command, shell);
         shell->exit_status = result;
-        
-        // Close file descriptors if needed
-        if (input_fd != STDIN_FILENO)
-            close(input_fd);
-        if (output_fd != STDOUT_FILENO)
-            close(output_fd);
-            
         return;
     }
     
@@ -183,7 +177,14 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
     get_paths(command, shell);
     if (!command->path)
     {
-        fprintf(stderr, "Command not found: %s\n", command->command);
+        printf("Command not found: %s\n", command->command);
+        // If the command path is not found, print an error and return
+        free(command->path);
+        command->path = NULL;
+        if (command->command && command->command[0] != '\0')
+            shell->exit_status = 127; // Command not found
+        else
+            shell->exit_status = 0; // Empty command
         return;
     }
     
@@ -199,47 +200,20 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
     pid = fork();
     if (pid == 0) // Child process
     {
-        if (command->redirects)
+        // Handle input redirection
+        if (handle_redirections(command) == -1)
         {
-            t_redirect *redirect = command->redirects;
-            while (redirect)
-            {
-                if (redirect->type == 1) // Input redirection
-                {
-                    int output_fd = open(redirect->filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                    if (output_fd < 0)
-                    {
-                        perror("open output redirection");
-                    } else
-                    {
-                        dup2(output_fd, STDOUT_FILENO);
-                    }
-                }else if (redirect->type == 0) // Output redirection
-                {
-                    int input_fd = open(redirect->filename, O_RDONLY);
-                    if (input_fd < 0)
-                    {
-                        perror("open input redirection");
-                    } else
-                    {
-                        dup2(input_fd, STDIN_FILENO);
-                    }
-                }
-                redirect = redirect->next;
-            }
+            exit(EXIT_FAILURE);
         }
-
         // Execute the command
         if (execve(command->path, exec_args, env_array) == -1)
         {
             perror("execve");
-            // free(command->path);
+            free(command->path);
             free(exec_args);
             free_double_env(env_array);
             exit(EXIT_FAILURE);
         }
-        
-        // This code should never be reached if execve is successful
         free(command->path);
         free(exec_args);
         free_double_env(env_array);
@@ -256,14 +230,11 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
     // Parent process
     free(exec_args);
     free_double_env(env_array);
-    
-    // Close file descriptors in parent
+    free(command->path);
     if (input_fd != STDIN_FILENO)
         close(input_fd);
     if (output_fd != STDOUT_FILENO)
         close(output_fd);
-    
-    // Wait for the command to finish
     int status;
     waitpid(pid, &status, 0);
     if (WIFEXITED(status))
@@ -343,7 +314,31 @@ void execute_pipeline(t_command *commands, t_shell *shell)
             // Check if this is a builtin command
             if (is_builtin_command(current->command))
             {
-                int result = execute_builtin(current, shell, STDIN_FILENO, STDOUT_FILENO);
+                // Handle redirections for this command
+                if (handle_redirections(current) == -1)
+                {
+                    exit(EXIT_FAILURE);
+                }
+                
+                // Execute builtin without additional redirection handling
+                int result = 0;
+                if (strcmp(current->command, "cd") == 0)
+                {
+                    result = builtin_cd(shell, current->args);
+                }
+                else if (strcmp(current->command, "env") == 0)
+                {
+                    result = builtin_env(shell);
+                }
+                else if (strcmp(current->command, "pwd") == 0)
+                {
+                    result = builtin_pwd(shell);
+                }
+                else if (strcmp(current->command, "exit") == 0)
+                {
+                    result = 0;
+                }
+                
                 exit(result);
             }
             

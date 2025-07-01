@@ -666,6 +666,7 @@ t_command *parse_tokens(t_token *tokens)
                 current->append = false;
                 current->heredoc = false;
                 current->heredoc_delimiter = NULL;
+                current->path = NULL;
                 current->next = NULL;
 
                 if (!head)
@@ -754,6 +755,7 @@ t_command *parse_tokens(t_token *tokens)
                     current->append = false;
                     current->heredoc = false;
                     current->heredoc_delimiter = NULL;
+                    current->path = NULL;
                     current->next = NULL;
                     tokens = tokens->next;
                 }
@@ -838,6 +840,7 @@ t_command *parse_tokens(t_token *tokens)
                 current->append = false;
                 current->heredoc = false;
                 current->heredoc_delimiter = NULL;
+                current->path = NULL;
                 current->next = NULL;
 
                 if (!head)
@@ -992,6 +995,7 @@ t_command *parse_tokens(t_token *tokens)
                 current->append = false;
                 current->heredoc = false;
                 current->heredoc_delimiter = NULL;
+                current->path = NULL;
                 current->next = NULL;
 
                 if (!head)
@@ -1054,14 +1058,30 @@ void print_commands(t_command *commands)
 }
 
 // Execute a builtin command with redirected stdin/stdout
-int execute_builtin(t_command *command, t_shell *shell, int input_fd, int output_fd)
+int execute_builtin(t_command *command, t_shell *shell)
 {
-    int original_stdin = -1;
-    int original_stdout = -1;
     int result = 0;
-    (void)input_fd; // Suppress unused variable warning
-    (void)output_fd; // Suppress unused variable warning
-    // Execute the builtin command
+    int saved_stdout = dup(STDOUT_FILENO);
+    int saved_stdin = dup(STDIN_FILENO);
+
+    if (saved_stdout == -1 || saved_stdin == -1)
+    {
+        perror("dup failed");
+        if (saved_stdout != -1)
+            close(saved_stdout);
+        if (saved_stdin != -1)
+            close(saved_stdin);
+        return -1;
+    }
+
+    // Handle redirections
+    if (handle_redirections(command) == -1)
+    {
+        close(saved_stdout);
+        close(saved_stdin);
+        return -1;
+    }
+
     if (strcmp(command->command, "cd") == 0)
     {
         result = builtin_cd(shell, command->args);
@@ -1079,22 +1099,16 @@ int execute_builtin(t_command *command, t_shell *shell, int input_fd, int output
         shell->exit_status = -1;
         result = 0;
     }
-    
-    // Restore original stdin/stdout if we redirected
-    if (original_stdin != -1)
-    {
-        dup2(original_stdin, STDIN_FILENO);
-        close(original_stdin);
-    }
-    
-    if (original_stdout != -1)
-    {
-        dup2(original_stdout, STDOUT_FILENO);
-        close(original_stdout);
-    }
-    
+
+    // Restore original file descriptors
+    dup2(saved_stdout, STDOUT_FILENO);
+    dup2(saved_stdin, STDIN_FILENO);
+    close(saved_stdout);
+    close(saved_stdin);
+
     return result;
 }
+
 
 int is_builtin_command(const char *command)
 {
@@ -1153,19 +1167,19 @@ void execute_commands(t_shell *shell, t_command *commands)
             continue;
         }
         
-        if (is_builtin_command(current->command))
-        {
-            // Call the builtin command function with standard input/output
-            printf("Executing builtin command: %s\n", current->command);
-            int result = execute_builtin(current, shell, STDIN_FILENO, STDOUT_FILENO);
-            shell->exit_status = result;
-        }
-        else
-        {
+        // if (is_builtin_command(current->command))
+        // {
+        //     // Call the builtin command function with standard input/output
+        //     printf("Executing builtin command: %s\n", current->command);
+        //     int result = execute_builtin(current, shell);
+        //     shell->exit_status = result;
+        // }
+        // else
+        // {
             // Execute external command using execve or similar
-            printf("Executing external command: %s\n", current->command);
-            execute_external_command(current, shell);
-        }
+        printf("Executing external command: %s\n", current->command);
+        execute_external_command(current, shell);
+        // }
         current = current->next;
     }
 }
