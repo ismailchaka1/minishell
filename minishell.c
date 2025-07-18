@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/30 19:08:22 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/07/11 13:54:31 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -373,6 +373,44 @@ char *expand_variables(char *str, t_shell *shell)
     return result;
 }
 
+// Helper function to split a string on whitespace and add multiple tokens
+static bool add_split_tokens(t_tokenizer *tokenizer, char *expanded_value)
+{
+    if (!expanded_value || expanded_value[0] == '\0')
+        return true; // Empty string, nothing to add
+    
+    // Use ft_split to split on spaces
+    char **words = ft_split(expanded_value, ' ');
+    if (!words)
+        return false;
+    
+    int i = 0;
+    while (words[i])
+    {
+        // Skip empty strings that might result from multiple spaces
+        if (words[i][0] != '\0')
+        {
+            t_token *token = create_token(TOKEN_WORD, words[i]);
+            if (!token)
+            {
+                // Free remaining words and return false
+                while (words[i])
+                {
+                    free(words[i]);
+                    i++;
+                }
+                free(words);
+                return false;
+            }
+            add_token(tokenizer, token);
+        }
+        free(words[i]);
+        i++;
+    }
+    free(words);
+    return true;
+}
+
 // Main tokenization function
 bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
 {
@@ -445,84 +483,117 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
             }
             else
             {
-                // Build a concatenated word from adjacent quotes and words
-                char *concatenated = ft_strdup("");
-                if (!concatenated)
-                    return false;
-                
-                while (tokenizer->input[tokenizer->pos] && 
-                       !isspace(tokenizer->input[tokenizer->pos]) && 
-                       !is_operator(tokenizer->input[tokenizer->pos]))
+                // Check if this is a standalone variable that should be word-split
+                bool is_standalone_var = false;
+                if (c == '$' && !after_heredoc)
                 {
-                    char current_char = tokenizer->input[tokenizer->pos];
-                    char *part = NULL;
+                    // Look ahead to see if this is just a variable
+                    size_t temp_pos = tokenizer->pos + 1;
                     
-                    if (current_char == '\'')
+                    if (tokenizer->input[temp_pos] == '{')
                     {
-                        part = extract_quoted(tokenizer, current_char);
-                        if (!part)
-                        {
-                            free(concatenated);
-                            return false;
-                        }
+                        // ${VAR} format
+                        temp_pos++;
+                        while (tokenizer->input[temp_pos] && tokenizer->input[temp_pos] != '}')
+                            temp_pos++;
+                        if (tokenizer->input[temp_pos] == '}')
+                            temp_pos++;
                     }
-                    else if (current_char == '"')
+                    else if (ft_isalpha(tokenizer->input[temp_pos]) || tokenizer->input[temp_pos] == '_')
                     {
-                        part = extract_quoted(tokenizer, current_char);
-                        if (!part)
-                        {
-                            free(concatenated);
-                            return false;
-                        }
-                        // Expand variables in double quotes
-                        if (ft_strchr(part, '$'))
-                        {
-                            char *expanded = expand_variables(part, shell);
-                            if (expanded)
-                            {
-                                free(part);
-                                part = expanded;
-                            }
-                            // If expansion fails, keep the original part
-                        }
+                        // $VAR format
+                        while (ft_isalnum(tokenizer->input[temp_pos]) || tokenizer->input[temp_pos] == '_')
+                            temp_pos++;
                     }
-                    else if (current_char == '\\' && tokenizer->input[tokenizer->pos + 1] == '\'')
+                    
+                    // Check if this variable is followed by whitespace or operator (standalone)
+                    if (isspace(tokenizer->input[temp_pos]) || 
+                        is_operator(tokenizer->input[temp_pos]) || 
+                        tokenizer->input[temp_pos] == '\0')
                     {
-                        // Handle escaped single quote outside of quotes
-                        part = ft_strdup("'");
-                        if (!part)
-                        {
-                            free(concatenated);
-                            return false;
-                        }
-                        tokenizer->pos += 2; // Skip \' 
+                        is_standalone_var = true;
+                    }
+                }
+                
+                if (is_standalone_var)
+                {
+                    // Extract and expand the variable, then split it
+                    size_t start = tokenizer->pos;
+                    tokenizer->pos++; // Skip $
+                    
+                    if (tokenizer->input[tokenizer->pos] == '{')
+                    {
+                        // ${VAR} format
+                        tokenizer->pos++;
+                        while (tokenizer->input[tokenizer->pos] && tokenizer->input[tokenizer->pos] != '}')
+                            tokenizer->pos++;
+                        if (tokenizer->input[tokenizer->pos] == '}')
+                            tokenizer->pos++;
                     }
                     else
                     {
-                        // Extract unquoted part until next quote or separator
-                        size_t start = tokenizer->pos;
-                        while (tokenizer->input[tokenizer->pos] &&
-                               !isspace(tokenizer->input[tokenizer->pos]) &&
-                               !is_operator(tokenizer->input[tokenizer->pos]) &&
-                               tokenizer->input[tokenizer->pos] != '\'' &&
-                               tokenizer->input[tokenizer->pos] != '"' &&
-                               !(tokenizer->input[tokenizer->pos] == '\\' && 
-                                 tokenizer->input[tokenizer->pos + 1] == '\''))
-                        {
+                        // $VAR format
+                        while (ft_isalnum(tokenizer->input[tokenizer->pos]) || tokenizer->input[tokenizer->pos] == '_')
                             tokenizer->pos++;
-                        }
-                        
-                        if (tokenizer->pos > start)
+                    }
+                    
+                    size_t len = tokenizer->pos - start;
+                    char *var_str = ft_substr(tokenizer->input, start, len);
+                    if (!var_str)
+                        return false;
+                    
+                    char *expanded = expand_variables(var_str, shell);
+                    free(var_str);
+                    
+                    if (expanded)
+                    {
+                        // Split and add the tokens
+                        if (!add_split_tokens(tokenizer, expanded))
                         {
-                            size_t len = tokenizer->pos - start;
-                            part = ft_substr(tokenizer->input, start, len);
+                            free(expanded);
+                            return false;
+                        }
+                        free(expanded);
+                        continue; // Skip the normal token creation
+                    }
+                    else
+                    {
+                        // If expansion failed, create empty token
+                        token = create_token(TOKEN_WORD, "");
+                    }
+                }
+                else
+                {
+                    // Normal concatenation logic
+                    char *concatenated = ft_strdup("");
+                    if (!concatenated)
+                        return false;
+                    
+                    while (tokenizer->input[tokenizer->pos] && 
+                           !isspace(tokenizer->input[tokenizer->pos]) && 
+                           !is_operator(tokenizer->input[tokenizer->pos]))
+                    {
+                        char current_char = tokenizer->input[tokenizer->pos];
+                        char *part = NULL;
+                        
+                        if (current_char == '\'')
+                        {
+                            part = extract_quoted(tokenizer, current_char);
                             if (!part)
                             {
                                 free(concatenated);
                                 return false;
                             }
-                            
-                            // Expand variables in unquoted part
+                        }
+                        else if (current_char == '"')
+                        {
+                            part = extract_quoted(tokenizer, current_char);
+                            if (!part)
+                            {
+                                free(concatenated);
+                                return false;
+                            }
+                            // Expand variables in double quotes
                             if (ft_strchr(part, '$'))
                             {
                                 char *expanded = expand_variables(part, shell);
@@ -534,31 +605,81 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
                                 // If expansion fails, keep the original part
                             }
                         }
+                        else if (current_char == '\\' && tokenizer->input[tokenizer->pos + 1] == '\'')
+                        {
+                            // Handle escaped single quote outside of quotes
+                            part = ft_strdup("'");
+                            if (!part)
+                            {
+                                free(concatenated);
+                                return false;
+                            }
+                            tokenizer->pos += 2; // Skip \' 
+                        }
+                        else
+                        {
+                            // Extract unquoted part until next quote or separator
+                            size_t start = tokenizer->pos;
+                            while (tokenizer->input[tokenizer->pos] &&
+                                   !isspace(tokenizer->input[tokenizer->pos]) &&
+                                   !is_operator(tokenizer->input[tokenizer->pos]) &&
+                                   tokenizer->input[tokenizer->pos] != '\'' &&
+                                   tokenizer->input[tokenizer->pos] != '"' &&
+                                   !(tokenizer->input[tokenizer->pos] == '\\' && 
+                                     tokenizer->input[tokenizer->pos + 1] == '\''))
+                            {
+                                tokenizer->pos++;
+                            }
+                            
+                            if (tokenizer->pos > start)
+                            {
+                                size_t len = tokenizer->pos - start;
+                                part = ft_substr(tokenizer->input, start, len);
+                                if (!part)
+                                {
+                                    free(concatenated);
+                                    return false;
+                                }
+                                
+                                // Expand variables in unquoted part (but not for heredoc delimiters)
+                                // Don't split here since we're in concatenation mode
+                                if (ft_strchr(part, '$') && !after_heredoc)
+                                {
+                                    char *expanded = expand_variables(part, shell);
+                                    if (expanded)
+                                    {
+                                        free(part);
+                                        part = expanded;
+                                    }
+                                    // If expansion fails, keep the original part
+                                }
+                            }
+                        }
+                        
+                        if (part)
+                        {
+                            char *temp = ft_strjoin(concatenated, part);
+                            free(concatenated);
+                            free(part);
+                            concatenated = temp;
+                            if (!concatenated)
+                                return false;
+                        }
                     }
                     
-                    if (part)
+                    // Create appropriate token type based on content
+                    if (concatenated && concatenated[0] != '\0')
                     {
-                        char *temp = ft_strjoin(concatenated, part);
-                        free(concatenated);
-                        free(part);
-                        concatenated = temp;
-                        if (!concatenated)
-                            return false;
+                        token = create_token(TOKEN_WORD, concatenated);
                     }
+                    else if (concatenated)
+                    {
+                        // Empty string from variable expansion - create empty word token
+                        token = create_token(TOKEN_WORD, "");
+                    }
+                    
+                    free(concatenated);
                 }
-                
-                // Create appropriate token type based on content
-                if (concatenated && concatenated[0] != '\0')
-                {
-                    token = create_token(TOKEN_WORD, concatenated);
-                }
-                else if (concatenated)
-                {
-                    // Empty string from variable expansion - create empty word token
-                    token = create_token(TOKEN_WORD, "");
-                }
-                
-                free(concatenated);
             }
         }
 
@@ -1410,11 +1531,16 @@ int handle_input_redirection(char *filename)
 // Handle heredoc (<<)
 int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell)
 {
-    (void)expand_vars;
-    (void)shell;
+    // (void)expand_vars;
+    // (void)shell;
     
-    printf("Heredoc parsing completed with delimiter '%s'\n", delimiter);
-    printf("Note: Heredoc execution is handled by execution module\n");
+    // printf("Heredoc parsing completed with delimiter '%s'\n", delimiter);
+    // printf("Note: Heredoc execution is handled by execution module\n");
+    if (!delimiter || delimiter[0] == '\0')
+    {
+        printf("Error: Empty delimiter for heredoc\n");
+        return 1;
+    }    
     return 0;
 }
 
