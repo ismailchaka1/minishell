@@ -6,7 +6,7 @@
 /*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 18:55:26 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/30 18:58:37 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/07/25 19:58:38 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,45 @@ int handle_command_output_redirection(t_redirect *redirect)
     return 0;
 }
 
+int handle_commmand_herdoc(t_redirect *redirect)
+{
+    int fd;
+    char *input;
+
+    fd = open(".heredoc", O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1)
+        return (-1);
+    printf("Heredoc started, type '%s' to end input\n", redirect->filename);
+    while (1)
+    {
+        input = readline("heredoc > ");
+        if (!input) // Handle Ctrl+D
+            break;
+
+        if (ft_strncmp(input, redirect->filename, ft_strlen(redirect->filename)) == 0)
+        {
+            free(input);
+            break;
+        }
+
+        write(fd, input, strlen(input));
+        write(fd, "\n", 1);
+        free(input);
+    }
+
+    lseek(fd, 0, SEEK_SET); // rewind before dup2
+    if (dup2(fd, STDIN_FILENO) == -1)
+    {
+        close(fd);
+        return (-1);
+    }
+
+    close(fd);
+    unlink(".heredoc"); // cleanup temp file
+    return 0;
+}
+
+
 int handle_redirections(t_command *command)
 {
     t_redirect *redirect = command->redirects;
@@ -89,8 +128,11 @@ int handle_redirections(t_command *command)
         {
             if (handle_command_output_redirection(redirect) == -1)
                 return -1;
+        }else if (redirect->type == 3)
+        {
+            if (handle_commmand_herdoc(redirect) == -1)
+                return -1;
         }
-        // Note: heredoc (type 3) handling would be implemented separately
         redirect = redirect->next;
     }
     return 0;

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/11 13:54:31 by root             ###   ########.fr       */
+/*   Updated: 2025/07/24 19:12:00 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1531,16 +1531,27 @@ int handle_input_redirection(char *filename)
 // Handle heredoc (<<)
 int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell)
 {
-    // (void)expand_vars;
-    // (void)shell;
-    
-    // printf("Heredoc parsing completed with delimiter '%s'\n", delimiter);
-    // printf("Note: Heredoc execution is handled by execution module\n");
-    if (!delimiter || delimiter[0] == '\0')
+    (void)shell;
+    (void) expand_vars;
+    int fd;
+    char *input;
+    fd = open(".heredoc", O_WRONLY | O_CREAT | O_TRUNC);
+    if (fd != -1)
     {
-        printf("Error: Empty delimiter for heredoc\n");
-        return 1;
-    }    
+        while (1)
+        {
+            input = readline("heredoc > ");
+            if (*input)
+            {
+                if (ft_strncmp(input, delimiter, INT_MAX) == 0)
+                {
+                    free(input);
+                    break;
+                }
+                write(fd, input, ft_strlen(input));
+            }
+        }
+    }
     return 0;
 }
 
