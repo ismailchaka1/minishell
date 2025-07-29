@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   redirections.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 18:55:26 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/25 19:58:38 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/07/29 21:44:53 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,42 +74,73 @@ int handle_command_output_redirection(t_redirect *redirect)
     return 0;
 }
 
-int handle_commmand_herdoc(t_redirect *redirect)
+int handle_command_heredoc(t_redirect *redirect)
 {
     int fd;
     char *input;
+    size_t delimiter_len;
 
     fd = open(".heredoc", O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (fd == -1)
+    {
+        perror("heredoc file creation");
         return (-1);
-    printf("Heredoc started, type '%s' to end input\n", redirect->filename);
+    }
+    
+    delimiter_len = ft_strlen(redirect->filename);
+    printf("heredoc> ");
+    
     while (1)
     {
-        input = readline("heredoc > ");
-        if (!input) // Handle Ctrl+D
+        input = readline("");
+        if (!input)
+        {
+            printf("\n");
             break;
+        }
 
-        if (ft_strncmp(input, redirect->filename, ft_strlen(redirect->filename)) == 0)
+        if (ft_strlen(input) == delimiter_len && 
+            ft_strncmp(input, redirect->filename, delimiter_len) == 0)
         {
             free(input);
             break;
         }
 
-        write(fd, input, strlen(input));
-        write(fd, "\n", 1);
+        // Write line to temporary file
+        if (write(fd, input, ft_strlen(input)) == -1 ||
+            write(fd, "\n", 1) == -1)
+        {
+            perror("heredoc write");
+            free(input);
+            close(fd);
+            unlink(".heredoc");
+            return (-1);
+        }
         free(input);
+        printf("heredoc> ");
     }
 
-    lseek(fd, 0, SEEK_SET); // rewind before dup2
+    // Rewind file to beginning for reading
+    if (lseek(fd, 0, SEEK_SET) == -1)
+    {
+        perror("heredoc lseek");
+        close(fd);
+        unlink(".heredoc");
+        return (-1);
+    }
+    
+    // Redirect stdin to read from temporary file
     if (dup2(fd, STDIN_FILENO) == -1)
     {
+        perror("heredoc dup2");
         close(fd);
+        unlink(".heredoc");
         return (-1);
     }
 
     close(fd);
     unlink(".heredoc"); // cleanup temp file
-    return 0;
+    return (0);
 }
 
 
@@ -130,7 +161,7 @@ int handle_redirections(t_command *command)
                 return -1;
         }else if (redirect->type == 3)
         {
-            if (handle_commmand_herdoc(redirect) == -1)
+            if (handle_command_heredoc(redirect) == -1)
                 return -1;
         }
         redirect = redirect->next;

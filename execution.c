@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execution.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/06/30 19:10:08 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/07/29 21:58:35 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,15 +44,22 @@ void get_paths(t_command *command, t_shell *shell)
         perror("ft_split");
         return;
     }
+    
     if (command->command[0] == '/')
     {
         if (access(command->command, F_OK | X_OK) == 0)
             command->path = ft_strdup(command->command);
-    } else if (command->command[0] == '.')
+        free_double_env(paths_orig); // Free the paths array
+        return;
+    } 
+    else if (command->command[0] == '.')
     {
         if (access(command->command, F_OK | X_OK) == 0)
             command->path = ft_strdup(command->command);
-    }else
+        free_double_env(paths_orig); // Free the paths array
+        return;
+    }
+    else
     {
         while (*paths)
         {
@@ -79,8 +86,10 @@ void get_paths(t_command *command, t_shell *shell)
             free(temp_path);
             paths++;
         }
-        free_double_env(paths_orig); // Free using the original pointer
     }
+    
+    // Always free the paths array at the end
+    free_double_env(paths_orig);
 }
 
 
@@ -333,6 +342,10 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 else if (strcmp(current->command, "pwd") == 0)
                 {
                     result = builtin_pwd(shell);
+                }
+                else if (strcmp(current->command, "export") == 0)
+                {
+                    result = builtin_export(shell, current->args);
                 }
                 else if (strcmp(current->command, "exit") == 0)
                 {

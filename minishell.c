@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/24 19:12:00 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/07/29 22:08:06 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,6 +77,38 @@ char *get_env_value(t_env *env, const char *key)
         env = env->next;
     }
     return NULL; // Key not found
+}
+
+void set_env_value(t_env *env, const char *key, const char *value)
+{
+    t_env *current = env;
+    while (current)
+    {
+        if (ft_strncmp(current->key, key, ft_strlen(key)) == 0)
+        {
+            free(current->value);
+            current->value = strdup(value);
+            return;
+        }
+        current = current->next;
+    }
+    
+    t_env *new_env = malloc(sizeof(t_env));
+    if (!new_env)
+        return;
+    while (env && env->next)
+        env = env->next; // Find the end of the list
+    new_env->key = strdup(key);
+    new_env->value = strdup(value);
+    new_env->next = NULL;
+    if (!env)
+    {
+        env = new_env; // If the list was empty, set head to new_env
+    }
+    else
+    {
+        env->next = new_env; // Otherwise, append to the end
+    }
 }
 
 void print_env(t_env *env)
@@ -1215,6 +1247,10 @@ int execute_builtin(t_command *command, t_shell *shell)
     {
         result = builtin_pwd(shell);
     }
+    else if (strcmp(command->command, "export") == 0)
+    {
+        result = builtin_export(shell, command->args);
+    }
     else if (strcmp(command->command, "exit") == 0)
     {
         shell->exit_status = -1;
@@ -1236,6 +1272,7 @@ int is_builtin_command(const char *command)
     return (strcmp(command, "cd") == 0 || 
             strcmp(command, "env") == 0 || 
             strcmp(command, "pwd") == 0 ||
+            strcmp(command, "export") == 0 ||
             strcmp(command, "exit") == 0);
 }
 
