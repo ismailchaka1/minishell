@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/29 22:08:06 by root             ###   ########.fr       */
+/*   Updated: 2025/07/31 20:13:16 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,8 +86,11 @@ void set_env_value(t_env *env, const char *key, const char *value)
     {
         if (ft_strncmp(current->key, key, ft_strlen(key)) == 0)
         {
-            free(current->value);
-            current->value = strdup(value);
+            if (value)
+            {      
+                free(current->value);
+                current->value = strdup(value);
+            }
             return;
         }
         current = current->next;
@@ -97,18 +100,17 @@ void set_env_value(t_env *env, const char *key, const char *value)
     if (!new_env)
         return;
     while (env && env->next)
-        env = env->next; // Find the end of the list
+        env = env->next;
     new_env->key = strdup(key);
-    new_env->value = strdup(value);
+    if (value)
+        new_env->value = strdup(value);
+    else
+        new_env->value = NULL;
     new_env->next = NULL;
     if (!env)
-    {
-        env = new_env; // If the list was empty, set head to new_env
-    }
+        env = new_env; 
     else
-    {
-        env->next = new_env; // Otherwise, append to the end
-    }
+        env->next = new_env;
 }
 
 void print_env(t_env *env)
@@ -791,12 +793,12 @@ t_command *parse_tokens(t_token *tokens)
             if (!current)
             {
                 // Check for empty command
-                if (tokens->value[0] == '\0')
-                {
-                    printf("Error: Empty command\n");
-                    free_commands(head);
-                    return NULL;
-                }
+                // if (tokens->value[0] == '\0')
+                // {
+                //     printf("Error: Empty command\n");
+                //     free_commands(head);
+                //     return NULL;
+                // }
                 
                 current = malloc(sizeof(t_command));
                 if (!current)
@@ -886,12 +888,12 @@ t_command *parse_tokens(t_token *tokens)
                      tokens->next->type == TOKEN_DOUBLE_QUOTE))
                 {
                     // Check for empty command after pipe
-                    if (!tokens->next->value || tokens->next->value[0] == '\0')
-                    {
-                        printf("Error: Empty command after pipe\n");
-                        free_commands(head);
-                        return NULL;
-                    }
+                    // if (!tokens->next->value || tokens->next->value[0] == '\0')
+                    // {
+                    //     printf("Error: Empty command after pipe\n");
+                    //     free_commands(head);
+                    //     return NULL;
+                    // }
                     
                     current->next = malloc(sizeof(t_command));
                     if (!current->next)
@@ -1287,7 +1289,7 @@ void execute_commands(t_shell *shell, t_command *commands)
         if (current->next)
         {
             // This is part of a pipeline - both builtins and external commands can be part of it
-            printf("Executing pipeline starting with: %s\n", current->command);
+            // printf("Executing pipeline starting with: %s\n", current->command);
             execute_external_command(current, shell);
             
             // Skip to the end of this pipeline
@@ -1319,7 +1321,7 @@ void execute_commands(t_shell *shell, t_command *commands)
         // Validate command before execution
         if (current->command[0] == '\0')
         {
-            printf("Error: Cannot execute empty command\n");
+            printf("Error: : command not found\n");
             shell->exit_status = 1;
             current = current->next;
             continue;
@@ -1335,7 +1337,7 @@ void execute_commands(t_shell *shell, t_command *commands)
         // else
         // {
             // Execute external command using execve or similar
-        printf("Executing external command: %s\n", current->command);
+        // printf("Executing external command: %s\n", current->command);
         execute_external_command(current, shell);
         // }
         current = current->next;
@@ -1589,6 +1591,7 @@ int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell)
             }
         }
     }
+    unlink(".heredoc");
     return 0;
 }
 

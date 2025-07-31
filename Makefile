@@ -2,7 +2,7 @@ SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c builti
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3
+CFLAGS = -Wall -Wextra -Werror
 RM = rm -f
 
 all: ${NAME}
@@ -23,5 +23,9 @@ clean:
 fclean: clean
 	@make -C ./libft fclean
 	${RM} ${NAME} ${NAME_BONUS}
+
+valgrind: ${NAME}
+	valgrind --leak-check=full --show-leak-kinds=all --track-fds=all --suppressions=ll.sup ./minishell
+
 
 re: fclean all

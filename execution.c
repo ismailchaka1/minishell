@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execution.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/29 21:58:35 by root             ###   ########.fr       */
+/*   Updated: 2025/07/31 19:55:06 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,12 +41,14 @@ void get_paths(t_command *command, t_shell *shell)
     char **paths_orig = paths; // Store the original pointer for freeing later
     if (!paths)
     {
+        printf("dasdasdasdasda\n");
         perror("ft_split");
         return;
     }
     
     if (command->command[0] == '/')
     {
+        // check if directory or not
         if (access(command->command, F_OK | X_OK) == 0)
             command->path = ft_strdup(command->command);
         free_double_env(paths_orig); // Free the paths array
@@ -55,7 +57,16 @@ void get_paths(t_command *command, t_shell *shell)
     else if (command->command[0] == '.')
     {
         if (access(command->command, F_OK | X_OK) == 0)
+        {
+            printf("valid\n");
             command->path = ft_strdup(command->command);
+        }
+        else
+        {
+            perror("access");
+            free_double_env(paths_orig);
+            return;
+        }
         free_double_env(paths_orig); // Free the paths array
         return;
     }
@@ -187,7 +198,6 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
     if (!command->path)
     {
         printf("Command not found: %s\n", command->command);
-        // If the command path is not found, print an error and return
         free(command->path);
         command->path = NULL;
         if (command->command && command->command[0] != '\0')
@@ -365,7 +375,8 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 fprintf(stderr, "Command not found: %s\n", current->command);
                 exit(EXIT_FAILURE);
             }
-            
+            if (handle_redirections(current) == -1)
+                exit(EXIT_FAILURE);
             if (execve(current->path, exec_args, env_array) == -1)
             {
                 perror("execve");
@@ -413,10 +424,8 @@ void execute_pipeline(t_command *commands, t_shell *shell)
 
 void execute_external_command(t_command *commands, t_shell *shell)
 {
-    // Check if we have multiple commands (a pipeline)
     if (commands->next)
     {
-        printf("Executing pipeline of commands...\n");
         execute_pipeline(commands, shell);
     }
     else
