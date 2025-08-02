@@ -6,7 +6,7 @@
 /*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/31 19:55:06 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/01 09:04:04 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ void get_paths(t_command *command, t_shell *shell)
     char *path_env = get_env_value(shell->env, "PATH");
     if (!path_env)
     {
-        fprintf(stderr, "Error: PATH environment variable not set\n");
+        fprintf(stderr, "%s : No such file or directory\n", command->command);
         return;
     }
 
@@ -41,7 +41,7 @@ void get_paths(t_command *command, t_shell *shell)
     char **paths_orig = paths; // Store the original pointer for freeing later
     if (!paths)
     {
-        printf("dasdasdasdasda\n");
+        // printf("dasdasdasdasda\n");
         perror("ft_split");
         return;
     }
@@ -356,6 +356,10 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 else if (strcmp(current->command, "export") == 0)
                 {
                     result = builtin_export(shell, current->args);
+                }
+                else if (strcmp(current->command, "unset") == 0)
+                {
+                    result = ft_unset(shell, current->args);
                 }
                 else if (strcmp(current->command, "exit") == 0)
                 {

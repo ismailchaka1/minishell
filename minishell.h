@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/29 22:05:16 by root             ###   ########.fr       */
+/*   Updated: 2025/08/01 08:50:08 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -119,6 +119,7 @@ void set_env_value(t_env *env, const char *key, const char *value);
 int builtin_pwd(t_shell *shell);
 int builtin_cd(t_shell *shell, char **path);
 int builtin_export(t_shell *shell, char **args);
+int    ft_unset(t_shell *shell, char **args);
 int updateOLDPWD(t_shell *shell, char *path);
 
 // Signal handling functions

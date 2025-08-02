@@ -1,8 +1,8 @@
-SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c builtins/export.c execution.c redirections.c
+SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c builtins/export.c builtins/unset.c execution.c redirections.c
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc
-CFLAGS = -Wall -Wextra -Werror
+CFLAGS = -Wall -Wextra -Werror -fPIE
 RM = rm -f
 
 all: ${NAME}

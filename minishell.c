@@ -6,7 +6,7 @@
 /*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/31 20:13:16 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/01 08:52:02 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1253,6 +1253,10 @@ int execute_builtin(t_command *command, t_shell *shell)
     {
         result = builtin_export(shell, command->args);
     }
+    else if (strcmp(command->command, "unset") == 0)
+    {
+        result = ft_unset(shell, command->args);
+    }
     else if (strcmp(command->command, "exit") == 0)
     {
         shell->exit_status = -1;
@@ -1275,6 +1279,7 @@ int is_builtin_command(const char *command)
             strcmp(command, "env") == 0 || 
             strcmp(command, "pwd") == 0 ||
             strcmp(command, "export") == 0 ||
+            strcmp(command, "unset") == 0 ||
             strcmp(command, "exit") == 0);
 }
 
@@ -1458,22 +1463,22 @@ int handle_standalone_redirections(t_command *command, t_shell *shell)
         switch (redirect->type)
         {
             case 0: // Input redirection
-                printf("Input redirection: < %s\n", redirect->filename);
+                // printf("Input redirection: < %s\n", redirect->filename);
                 if (handle_input_redirection(redirect->filename) != 0)
                     result = 1;
                 break;
             case 1: // Output redirection
-                printf("Output redirection: > %s\n", redirect->filename);
+                // printf("Output redirection: > %s\n", redirect->filename);
                 if (handle_output_redirection(redirect->filename, false) != 0)
                     result = 1;
                 break;
             case 2: // Append redirection
-                printf("Append redirection: >> %s\n", redirect->filename);
+                // printf("Append redirection: >> %s\n", redirect->filename);
                 if (handle_output_redirection(redirect->filename, true) != 0)
                     result = 1;
                 break;
             case 3: // Heredoc (parsing only - execution handled by colleague)
-                printf("Heredoc redirection: << %s\n", redirect->filename);
+                // printf("Heredoc redirection: << %s\n", redirect->filename);
                 if (handle_heredoc(redirect->filename, !redirect->quoted_delimiter, shell) != 0)
                     result = 1;
                 break;
@@ -1627,7 +1632,7 @@ int main(int argc, char **argv, char **envp)
             t_command *commands = parse_tokens(tokenizer->tokens);
             if (commands)
             {
-                print_commands(commands);
+                // print_commands(commands);
                 execute_commands(&shell, commands);
                 free_commands(commands);
                 // Check if exit was requested

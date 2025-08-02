@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   redirections.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 18:55:26 by ichakank          #+#    #+#             */
-/*   Updated: 2025/07/29 21:44:53 by root             ###   ########.fr       */
+/*   Updated: 2025/08/01 08:43:29 by ichakank         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,11 +88,11 @@ int handle_command_heredoc(t_redirect *redirect)
     }
     
     delimiter_len = ft_strlen(redirect->filename);
-    printf("heredoc> ");
+    // printf("heredoc> ");
     
     while (1)
     {
-        input = readline("");
+        input = readline("heredoc> ");
         if (!input)
         {
             printf("\n");
@@ -117,7 +117,6 @@ int handle_command_heredoc(t_redirect *redirect)
             return (-1);
         }
         free(input);
-        printf("heredoc> ");
     }
 
     // Rewind file to beginning for reading
@@ -147,7 +146,13 @@ int handle_command_heredoc(t_redirect *redirect)
 int handle_redirections(t_command *command)
 {
     t_redirect *redirect = command->redirects;
-    
+    t_redirect *last_heredoc = NULL;
+    while (redirect && redirect->type == 3)
+    {
+        last_heredoc = redirect;
+        redirect = redirect->next;
+    }
+    redirect = command->redirects;
     while (redirect)
     {
         if (redirect->type == 0) // Input redirection
@@ -161,8 +166,14 @@ int handle_redirections(t_command *command)
                 return -1;
         }else if (redirect->type == 3)
         {
-            if (handle_command_heredoc(redirect) == -1)
-                return -1;
+            if (redirect == last_heredoc)
+            {
+                if (handle_command_heredoc(redirect) == -1)
+                    return -1;
+            }else
+            {
+                handle_heredoc(redirect->filename, !redirect->quoted_delimiter, NULL);
+            }
         }
         redirect = redirect->next;
     }
