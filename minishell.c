@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/01 08:52:02 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/03 11:17:51 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1283,71 +1283,94 @@ int is_builtin_command(const char *command)
             strcmp(command, "exit") == 0);
 }
 
-void execute_commands(t_shell *shell, t_command *commands)
+void execute_commands(t_shell *shell, t_command *command)
 {
-    t_command *current = commands;
-
-    while (current)
+    if (!command->command)
     {
-        t_command *next_command = NULL;
-        // Check if this is part of a pipeline
-        if (current->next)
+        if (handle_standalone_redirections(command, shell) != 0)
         {
-            // This is part of a pipeline - both builtins and external commands can be part of it
-            // printf("Executing pipeline starting with: %s\n", current->command);
-            execute_external_command(current, shell);
-            
-            // Skip to the end of this pipeline
-            next_command = current;
-            while (next_command && next_command->next && next_command->next->command)
-                next_command = next_command->next;
-            
-            // Move to the command after the pipeline
-            current = next_command->next;
-            continue;
-        }
-        
-        // Handle standalone redirections (no command)
-        if (!current->command)
-        {
-            printf("Executing standalone redirections...\n");
-            if (handle_standalone_redirections(current, shell) != 0)
-            {
-                shell->exit_status = 1;
-            }
-            else
-            {
-                shell->exit_status = 0;
-            }
-            current = current->next;
-            continue;
-        }
-        
-        // Validate command before execution
-        if (current->command[0] == '\0')
-        {
-            printf("Error: : command not found\n");
             shell->exit_status = 1;
-            current = current->next;
-            continue;
         }
-        
-        // if (is_builtin_command(current->command))
-        // {
-        //     // Call the builtin command function with standard input/output
-        //     printf("Executing builtin command: %s\n", current->command);
-        //     int result = execute_builtin(current, shell);
-        //     shell->exit_status = result;
-        // }
-        // else
-        // {
-            // Execute external command using execve or similar
-        // printf("Executing external command: %s\n", current->command);
-        execute_external_command(current, shell);
-        // }
-        current = current->next;
+        else
+        {
+            shell->exit_status = 0;
+        }
+        command = command->next;
+    }
+
+    // Check if this is a builtin command
+    if (is_builtin_command(command->command))
+    {
+        int result = execute_builtin(command, shell);
+        shell->exit_status = result;
+    }
+    else
+    {
+        execute_external_command(command, shell);
     }
 }
+
+// void execute_commands(t_shell *shell, t_command *commands)
+// {
+//     t_command *current = commands;
+
+//     while (current)
+//     {
+//         // Handle standalone redirections (no command)
+//         if (!current->command)
+//         {
+//             if (handle_standalone_redirections(current, shell) != 0)
+//             {
+//                 shell->exit_status = 1;
+//             }
+//             else
+//             {
+//                 shell->exit_status = 0;
+//             }
+//             current = current->next;
+//             continue;
+//         }
+        
+//         // Validate command before execution
+//         if (current->command[0] == '\0')
+//         {
+//             printf("Error: : command not found\n");
+//             shell->exit_status = 1;
+//             current = current->next;
+//             continue;
+//         }
+        
+//         // Check if this is part of a pipeline
+//         if (current->next)
+//         {
+//             // This is part of a pipeline - execute the entire pipeline
+//             execute_external_command(current, shell);
+            
+//             // Skip to the end of this pipeline
+//             while (current && current->next)
+//                 current = current->next;
+            
+//             // Move to the command after the pipeline
+//             current = current->next;
+//             continue;
+//         }
+        
+//         // Handle single commands (not part of a pipeline)
+//         if (is_builtin_command(current->command))
+//         {
+//             // Execute builtin command with proper redirection handling
+//             int result = execute_builtin(current, shell);
+//             shell->exit_status = result;
+//         }
+//         else
+//         {
+//             // Execute external command
+//             execute_external_command(current, shell);
+//         }
+        
+//         current = current->next;
+//     }
+// }
 
 void free_commands(t_command *commands)
 {
@@ -1627,12 +1650,12 @@ int main(int argc, char **argv, char **envp)
         t_tokenizer *tokenizer = init_tokenizer(input);
         if (tokenize(tokenizer, &shell))
         {
-            print_tokens(tokenizer->tokens);
+            // print_tokens(tokenizer->tokens);
             // change the tokens linked list to a command linked list
             t_command *commands = parse_tokens(tokenizer->tokens);
             if (commands)
             {
-                // print_commands(commands);
+                print_commands(commands);
                 execute_commands(&shell, commands);
                 free_commands(commands);
                 // Check if exit was requested
