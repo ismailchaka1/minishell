@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execution.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/01 09:04:04 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/05 09:01:56 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -298,6 +298,53 @@ void execute_pipeline(t_command *commands, t_shell *shell)
             free(pids);
             return;
         }
+
+        get_paths(current, shell);
+        
+        if (!current->path)
+        {
+            fprintf(stderr, "Command not found: %s\n", current->command);
+            // Clean up resources and continue to next command
+            if (prev_pipe_read != STDIN_FILENO)
+                close(prev_pipe_read);
+            // if (current->next)
+            // {
+            //     close(pipefd[0]);
+            //     dup2(pipefd[1], STDOUT_FILENO);
+            //     close(pipefd[1]);
+            // }
+            shell->exit_status = 127;
+            current = current->next;
+            continue;
+        }
+        
+        char **env_array = get_double_env(shell);
+        char **exec_args = create_args_array(current);
+        
+        if (!exec_args || !env_array)
+        {
+            fprintf(stderr, "Failed to create arguments array for command: %s\n", current->command);
+            if (env_array)
+                free_double_env(env_array);
+            if (exec_args)
+                free(exec_args);
+            if (current->path)
+            {
+                free(current->path);
+                current->path = NULL;
+            }
+            if (prev_pipe_read != STDIN_FILENO)
+                close(prev_pipe_read);
+            // if (current->next)
+            // {
+            //     close(pipefd[0]);
+            //     dup2(pipefd[1], STDOUT_FILENO);
+            //     close(pipefd[1]);
+            // }
+            shell->exit_status = 1;
+            current = current->next;
+            continue;
+        }
         
         // Fork for this command
         pid_t pid = fork();
@@ -370,15 +417,6 @@ void execute_pipeline(t_command *commands, t_shell *shell)
             }
             
             // Execute external command
-            get_paths(current, shell);
-            char **env_array = get_double_env(shell);
-            char **exec_args = create_args_array(current);
-            
-            if (!current->path)
-            {
-                fprintf(stderr, "Command not found: %s\n", current->command);
-                exit(EXIT_FAILURE);
-            }
             if (handle_redirections(current) == -1)
                 exit(EXIT_FAILURE);
             if (execve(current->path, exec_args, env_array) == -1)
@@ -391,12 +429,24 @@ void execute_pipeline(t_command *commands, t_shell *shell)
             }
             
             // Should never reach here
+            free(current->path);
+            free(exec_args);
+            free_double_env(env_array);
             exit(EXIT_SUCCESS);
         }
         else // Parent process
         {
             // Store child PID
             pids[i++] = pid;
+            
+            // Clean up memory in parent
+            free(exec_args);
+            free_double_env(env_array);
+            if (current->path)
+            {
+                free(current->path);
+                current->path = NULL;
+            }
             
             // Close the previous pipe read end if it's not stdin
             if (prev_pipe_read != STDIN_FILENO)
@@ -413,6 +463,10 @@ void execute_pipeline(t_command *commands, t_shell *shell)
             current = current->next;
         }
     }
+    
+    // Close the final pipe read end if it exists
+    if (prev_pipe_read != STDIN_FILENO)
+        close(prev_pipe_read);
     
     // Wait for all child processes to finish
     int status;

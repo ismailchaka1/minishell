@@ -2,7 +2,7 @@ SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c builti
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -fPIE
+CFLAGS = -Wall -Wextra -Werror
 RM = rm -f
 
 all: ${NAME}

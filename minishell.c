@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/03 11:17:51 by root             ###   ########.fr       */
+/*   Updated: 2025/08/05 08:57:13 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1655,7 +1655,7 @@ int main(int argc, char **argv, char **envp)
             t_command *commands = parse_tokens(tokenizer->tokens);
             if (commands)
             {
-                print_commands(commands);
+                // print_commands(commands);
                 execute_commands(&shell, commands);
                 free_commands(commands);
                 // Check if exit was requested
