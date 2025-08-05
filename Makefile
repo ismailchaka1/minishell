@@ -1,4 +1,16 @@
-SRCS = 	minishell.c signals.c builtins/env.c builtins/pwd.c builtins/cd.c builtins/export.c builtins/unset.c execution.c redirections.c
+SRCS = 	minishell.c \
+		signals.c  \
+		builtins/env.c \
+		builtins/pwd.c \
+		builtins/cd.c \
+		builtins/export.c \
+		builtins/unset.c \
+		execution.c \
+		redirections.c \
+		tokenizer.c \
+		parsing.c \
+		redirections/input.c \
+		redirections/output.c 
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc

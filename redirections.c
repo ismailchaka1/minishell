@@ -3,129 +3,96 @@
 /*                                                        :::      ::::::::   */
 /*   redirections.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 18:55:26 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/01 08:43:29 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/05 21:40:22 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-int handle_command_input_redirection(t_redirect *redirect)
+int setup_heredoc_file(void)
 {
     int fd;
     
-    if (redirect->type == 0) // Input redirection '<'
-    {
-        fd = open(redirect->filename, O_RDONLY);
-        if (fd == -1)
-        {
-            perror(redirect->filename);
-            return -1;
-        }
-        if (dup2(fd, STDIN_FILENO) == -1)
-        {
-            perror("dup2");
-            close(fd);
-            return -1;
-        }
-        close(fd);
-    }
-    return 0;
-}
-
-int handle_command_output_redirection(t_redirect *redirect)
-{
-    int fd;
-    
-    if (redirect->type == 1) // Output redirection '>'
-    {
-        fd = open(redirect->filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd == -1)
-        {
-            perror(redirect->filename);
-            return -1;
-        }
-        if (dup2(fd, STDOUT_FILENO) == -1)
-        {
-            perror("dup2");
-            close(fd);
-            return -1;
-        }
-        close(fd);
-    }
-    else if (redirect->type == 2) // Append redirection '>>'
-    {
-        fd = open(redirect->filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
-        if (fd == -1)
-        {
-            perror(redirect->filename);
-            return -1;
-        }
-        if (dup2(fd, STDOUT_FILENO) == -1)
-        {
-            perror("dup2");
-            close(fd);
-            return -1;
-        }
-        close(fd);
-    }
-    return 0;
-}
-
-int handle_command_heredoc(t_redirect *redirect)
-{
-    int fd;
-    char *input;
-    size_t delimiter_len;
-
     fd = open(".heredoc", O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (fd == -1)
     {
         perror("heredoc file creation");
-        return (-1);
+        setup_interactive_signals(); // Restore signals
+        return -1;
     }
+    return fd;
+}
+
+int write_heredoc_line(int fd, char *input)
+{
+    if (write(fd, input, ft_strlen(input)) == -1 ||
+        write(fd, "\n", 1) == -1)
+    {
+        perror("heredoc write");
+        return -1;
+    }
+    return 0;
+}
+
+int check_delimiter_match(char *input, t_redirect *redirect)
+{
+    size_t delimiter_len = ft_strlen(redirect->filename);
     
-    delimiter_len = ft_strlen(redirect->filename);
-    // printf("heredoc> ");
+    return (ft_strlen(input) == delimiter_len && 
+            ft_strncmp(input, redirect->filename, delimiter_len) == 0);
+}
+
+int read_heredoc_input(int fd, t_redirect *redirect)
+{
+    char *input;
+    int eof_received = 0;
     
     while (1)
     {
+        if (g_heredoc_interrupted)
+            break;
+        
         input = readline("heredoc> ");
         if (!input)
         {
             printf("\n");
+            eof_received = 1;
             break;
         }
-
-        if (ft_strlen(input) == delimiter_len && 
-            ft_strncmp(input, redirect->filename, delimiter_len) == 0)
+        if (g_heredoc_interrupted)
         {
             free(input);
             break;
         }
-
-        // Write line to temporary file
-        if (write(fd, input, ft_strlen(input)) == -1 ||
-            write(fd, "\n", 1) == -1)
+        if (check_delimiter_match(input, redirect))
         {
-            perror("heredoc write");
             free(input);
-            close(fd);
-            unlink(".heredoc");
-            return (-1);
+            break;
+        }
+        if (write_heredoc_line(fd, input) == -1)
+        {
+            free(input);
+            return -1;
         }
         free(input);
     }
+    
+    return (g_heredoc_interrupted || eof_received) ? -1 : 0;
+}
 
+int finalize_heredoc(int fd)
+{
     // Rewind file to beginning for reading
     if (lseek(fd, 0, SEEK_SET) == -1)
     {
         perror("heredoc lseek");
         close(fd);
         unlink(".heredoc");
-        return (-1);
+        setup_interactive_signals(); // Restore signals
+        return -1;
     }
     
     // Redirect stdin to read from temporary file
@@ -134,47 +101,78 @@ int handle_command_heredoc(t_redirect *redirect)
         perror("heredoc dup2");
         close(fd);
         unlink(".heredoc");
-        return (-1);
+        setup_interactive_signals(); // Restore signals
+        return -1;
     }
 
     close(fd);
     unlink(".heredoc"); // cleanup temp file
-    return (0);
+    setup_interactive_signals(); // Restore signals
+    return 0;
+}
+
+int handle_command_heredoc(t_redirect *redirect)
+{
+    int fd;
+
+    // Setup heredoc signal handling
+    setup_heredoc_signals();
+    g_heredoc_interrupted = 0;
+
+    fd = setup_heredoc_file();
+    if (fd == -1)
+        return -1;
+    
+    if (read_heredoc_input(fd, redirect) == -1)
+    {
+        close(fd);
+        unlink(".heredoc");
+        setup_interactive_signals(); // Restore signals
+        return -1;
+    }
+
+    return finalize_heredoc(fd);
 }
 
 
-int handle_redirections(t_command *command)
+t_redirect *find_last_heredoc(t_command *command)
 {
     t_redirect *redirect = command->redirects;
     t_redirect *last_heredoc = NULL;
+    
     while (redirect && redirect->type == 3)
     {
         last_heredoc = redirect;
         redirect = redirect->next;
     }
-    redirect = command->redirects;
+    return last_heredoc;
+}
+
+int process_single_redirect(t_redirect *redirect, t_redirect *last_heredoc)
+{
+    if (redirect->type == 0) // Input redirection
+        return handle_command_input_redirection(redirect);
+    else if (redirect->type == 1 || redirect->type == 2) // Output or append
+        return handle_command_output_redirection(redirect);
+    else if (redirect->type == 3) // Heredoc
+    {
+        if (redirect == last_heredoc)
+            return handle_command_heredoc(redirect);
+        else
+            handle_heredoc(redirect->filename, !redirect->quoted_delimiter, NULL);
+    }
+    return 0;
+}
+
+int handle_redirections(t_command *command)
+{
+    t_redirect *redirect = command->redirects;
+    t_redirect *last_heredoc = find_last_heredoc(command);
+    
     while (redirect)
     {
-        if (redirect->type == 0) // Input redirection
-        {
-            if (handle_command_input_redirection(redirect) == -1)
-                return -1;
-        }
-        else if (redirect->type == 1 || redirect->type == 2) // Output or append redirection
-        {
-            if (handle_command_output_redirection(redirect) == -1)
-                return -1;
-        }else if (redirect->type == 3)
-        {
-            if (redirect == last_heredoc)
-            {
-                if (handle_command_heredoc(redirect) == -1)
-                    return -1;
-            }else
-            {
-                handle_heredoc(redirect->filename, !redirect->quoted_delimiter, NULL);
-            }
-        }
+        if (process_single_redirect(redirect, last_heredoc) == -1)
+            return -1;
         redirect = redirect->next;
     }
     return 0;

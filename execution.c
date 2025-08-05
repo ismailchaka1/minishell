@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/05 09:01:56 by root             ###   ########.fr       */
+/*   Updated: 2025/08/05 22:30:14 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -187,7 +187,7 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
     // Check if this is a builtin command
     if (is_builtin_command(command->command))
     {
-        int result = execute_builtin(command, shell);
+        int result = execute_builtin(command, shell, false);
         shell->exit_status = result;
         return;
     }
@@ -300,24 +300,6 @@ void execute_pipeline(t_command *commands, t_shell *shell)
         }
 
         get_paths(current, shell);
-        
-        if (!current->path)
-        {
-            fprintf(stderr, "Command not found: %s\n", current->command);
-            // Clean up resources and continue to next command
-            if (prev_pipe_read != STDIN_FILENO)
-                close(prev_pipe_read);
-            // if (current->next)
-            // {
-            //     close(pipefd[0]);
-            //     dup2(pipefd[1], STDOUT_FILENO);
-            //     close(pipefd[1]);
-            // }
-            shell->exit_status = 127;
-            current = current->next;
-            continue;
-        }
-        
         char **env_array = get_double_env(shell);
         char **exec_args = create_args_array(current);
         
@@ -375,6 +357,17 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 close(pipefd[0]);
                 dup2(pipefd[1], STDOUT_FILENO);
                 close(pipefd[1]);
+            }
+            if (!current->path)
+            {
+                fprintf(stderr, "Command not found: %s\n", current->command);
+                if (prev_pipe_read != STDIN_FILENO)
+                    close(prev_pipe_read);
+                if (current->next)
+                    close(pipefd[1]);
+                free(exec_args);
+                free_double_env(env_array);
+                exit(127);
             }
             
             // Check if this is a builtin command

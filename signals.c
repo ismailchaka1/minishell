@@ -3,14 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   signals.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/27 00:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/07/25 20:02:32 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/05 17:58:19 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
+
+// Global flag to track heredoc interruption
+volatile int g_heredoc_interrupted = 0;
 
 /*
 ** Handle Ctrl-C (SIGINT) in interactive mode
@@ -26,13 +29,15 @@ static void	sigint_handler(int signum)
 }
 
 /*
-** Handle Ctrl-C (SIGINT) during command execution
-** Just prints a newline
+** Handle Ctrl-C (SIGINT) during heredoc input
+** Sets flag to interrupt heredoc
 */
-static void	sigint_child_handler(int signum)
+static void	sigint_heredoc_handler(int signum)
 {
     (void)signum;
-    write(1, "\n", 1);
+    g_heredoc_interrupted = 1;
+    write(STDOUT_FILENO, "\n", 1);
+    // Removed dangerous rl_done = 1 that was causing segfaults
 }
 
 /*
@@ -44,8 +49,8 @@ void	setup_interactive_signals(void)
 {
     struct sigaction	sa;
 
-    sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
     
     // Handle SIGINT (Ctrl-C)
     sa.sa_handler = sigint_handler;
@@ -57,40 +62,19 @@ void	setup_interactive_signals(void)
 }
 
 /*
-** Configure signals for command execution mode
-** - SIGINT (Ctrl-C): Print newline
-** - SIGQUIT (Ctrl-\): Print "Quit" and core dump
-*/
-void	setup_execution_signals(void)
-{
-    struct sigaction	sa;
-
-    sa.sa_flags = 0;
-    sigemptyset(&sa.sa_mask);
-    
-    // Handle SIGINT (Ctrl-C)
-    sa.sa_handler = sigint_child_handler;
-    sigaction(SIGINT, &sa, NULL);
-    
-    // Default action for SIGQUIT (Ctrl-\)
-    sa.sa_handler = SIG_DFL;
-    sigaction(SIGQUIT, &sa, NULL);
-}
-
-/*
 ** Configure signals for heredoc mode
-** - SIGINT (Ctrl-C): Exit heredoc
+** - SIGINT (Ctrl-C): Interrupt heredoc input
 ** - SIGQUIT (Ctrl-\): Ignore
 */
 void	setup_heredoc_signals(void)
 {
     struct sigaction	sa;
 
-    sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;  // No SA_RESTART to allow interruption
     
-    // Handle SIGINT (Ctrl-C)
-    sa.sa_handler = sigint_handler;
+    // Handle SIGINT (Ctrl-C) to interrupt heredoc
+    sa.sa_handler = sigint_heredoc_handler;
     sigaction(SIGINT, &sa, NULL);
     
     // Ignore SIGQUIT (Ctrl-\)

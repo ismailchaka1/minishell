@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/01 08:50:08 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/05 21:39:54 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,8 +124,10 @@ int updateOLDPWD(t_shell *shell, char *path);
 
 // Signal handling functions
 void setup_interactive_signals(void);
-void setup_execution_signals(void);
 void setup_heredoc_signals(void);
+
+// Global flag for heredoc interruption
+extern volatile int g_heredoc_interrupted;
 
 // Redirection management functions
 t_redirect *create_redirect(char *filename, int type);
@@ -133,6 +135,20 @@ t_redirect *create_redirect_with_quotes(char *filename, int type, bool quoted);
 void add_redirect(t_command *command, t_redirect *redirect);
 void free_redirects(t_redirect *redirects);
 int handle_redirections(t_command *command);
+
+// New redirection helper functions
+int handle_command_input_redirection(t_redirect *redirect);
+int handle_command_output_redirection(t_redirect *redirect);
+int handle_command_heredoc(t_redirect *redirect);
+int handle_output_redirect(t_redirect *redirect);
+int handle_append_redirect(t_redirect *redirect);
+int setup_heredoc_file(void);
+int write_heredoc_line(int fd, char *input);
+int check_delimiter_match(char *input, t_redirect *redirect);
+int read_heredoc_input(int fd, t_redirect *redirect);
+int finalize_heredoc(int fd);
+t_redirect *find_last_heredoc(t_command *command);
+int process_single_redirect(t_redirect *redirect, t_redirect *last_heredoc);
 
 // Standalone redirection functions
 int handle_standalone_redirections(t_command *command, t_shell *shell);
@@ -146,7 +162,7 @@ void execute_external_command(t_command *commands, t_shell *shell);
 void execute_single_command(t_command *command, t_shell *shell, int input_fd, int output_fd);
 void execute_pipeline(t_command *commands, t_shell *shell);
 char **create_args_array(t_command *command);
-int execute_builtin(t_command *command, t_shell *shell);
+int execute_builtin(t_command *command, t_shell *shell, bool pipe);
 int is_builtin_command(const char *command);
 
 #endif // MINISHELL_H
