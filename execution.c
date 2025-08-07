@@ -38,20 +38,18 @@ void get_paths(t_command *command, t_shell *shell)
     }
 
     char **paths = ft_split(path_env, ':');
-    char **paths_orig = paths; // Store the original pointer for freeing later
+    char **paths_orig = paths;
     if (!paths)
     {
-        // printf("dasdasdasdasda\n");
         perror("ft_split");
         return;
     }
     
     if (command->command[0] == '/')
     {
-        // check if directory or not
         if (access(command->command, F_OK | X_OK) == 0)
             command->path = ft_strdup(command->command);
-        free_double_env(paths_orig); // Free the paths array
+        free_double_env(paths_orig);
         return;
     } 
     else if (command->command[0] == '.')
@@ -367,6 +365,10 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                     close(pipefd[1]);
                 free(exec_args);
                 free_double_env(env_array);
+                free_tokenizer(current->tokens);
+                free(pids);
+                free_commands(commands);
+                free_env(shell->env);
                 exit(127);
             }
             
@@ -376,6 +378,8 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 // Handle redirections for this command
                 if (handle_redirections(current) == -1)
                 {
+                    free_commands(commands);
+                    free_env(shell->env);
                     exit(EXIT_FAILURE);
                 }
                 
@@ -405,19 +409,26 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 {
                     result = 0;
                 }
-                
+                free_commands(commands);
+                free_env(shell->env);
                 exit(result);
             }
             
             // Execute external command
             if (handle_redirections(current) == -1)
+            {
+                free_commands(commands);
+                free_env(shell->env);
                 exit(EXIT_FAILURE);
+            }
             if (execve(current->path, exec_args, env_array) == -1)
             {
                 perror("execve");
                 free(current->path);
                 free(exec_args);
                 free_double_env(env_array);
+                free_commands(commands);
+                free_env(shell->env);
                 exit(EXIT_FAILURE);
             }
             
@@ -425,6 +436,8 @@ void execute_pipeline(t_command *commands, t_shell *shell)
             free(current->path);
             free(exec_args);
             free_double_env(env_array);
+            free_commands(commands);
+            free_env(shell->env);
             exit(EXIT_SUCCESS);
         }
         else // Parent process

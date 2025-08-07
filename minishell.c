@@ -561,7 +561,7 @@ int main(int argc, char **argv, char **envp)
         {
             // print_tokens(tokenizer->tokens);
             // change the tokens linked list to a command linked list
-            t_command *commands = parse_tokens(tokenizer->tokens);
+            t_command *commands = parse_tokens(tokenizer->tokens, tokenizer);
             if (commands)
             {
                 // print_commands(commands);

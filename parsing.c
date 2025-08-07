@@ -43,7 +43,7 @@ static bool add_arg(t_command *current, char *arg)
     return true; // Success
 }
 
-t_command *parse_tokens(t_token *tokens)
+t_command *parse_tokens(t_token *tokens, t_tokenizer *tokenizer)
 {
     t_command *head = NULL;
     t_command *current = NULL;
@@ -86,6 +86,7 @@ t_command *parse_tokens(t_token *tokens)
                 current->heredoc_delimiter = NULL;
                 current->path = NULL;
                 current->next = NULL;
+                current->tokens = tokenizer;
 
                 if (!head)
                     head = current;
@@ -175,6 +176,7 @@ t_command *parse_tokens(t_token *tokens)
                     current->heredoc_delimiter = NULL;
                     current->path = NULL;
                     current->next = NULL;
+                    current->tokens = tokenizer;
                     tokens = tokens->next;
                 }
                 else
@@ -260,7 +262,7 @@ t_command *parse_tokens(t_token *tokens)
                 current->heredoc_delimiter = NULL;
                 current->path = NULL;
                 current->next = NULL;
-
+                current->tokens = tokenizer;
                 if (!head)
                     head = current;
             }

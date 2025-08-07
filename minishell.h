@@ -93,6 +93,7 @@ typedef struct s_command
     char *heredoc_delimiter; // Delimiter for heredoc
     bool heredoc_expand;
     char *path;            // Full path to the command (if found in PATH)
+    struct s_tokenizer *tokens; // Tokens associated with this command
     struct s_command *next; // Pointer to the next command in the pipeline
 } t_command;
 
@@ -103,7 +104,7 @@ t_token *create_token(t_token_type type, char *value);
 void add_token(t_tokenizer *tokenizer, t_token *token);
 
 // Command parsing and management functions
-t_command *parse_tokens(t_token *tokens);
+t_command *parse_tokens(t_token *tokens, t_tokenizer *tokenizer);
 void free_commands(t_command *commands);
 
 // Environment management functions
