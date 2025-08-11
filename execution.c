@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/05 22:30:14 by root             ###   ########.fr       */
+/*   Updated: 2025/08/11 18:30:47 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,44 @@ void free_double_env(char **env_array)
     free(original);
 }
 
+int check_absolute_or_relative(t_command *command)
+{
+    if (ft_strchr(command->command, '/'))
+        return 1; // Absolute path
+    else if (ft_strchr(command->command, '.'))
+        return 1;
+    return 0;
+}
+
+void check_path(t_command *command, char **paths)
+{
+    while (*paths)
+    {
+        char *full_path = ft_strjoin(*paths, "/");
+        if (!full_path)
+        {
+            perror("ft_strjoin");
+            free_double_env(paths);
+            return;
+        }
+        char *temp_path = ft_strjoin(full_path, command->command);
+        free(full_path);
+        if (!temp_path)
+        {
+            perror("ft_strjoin");
+            free_double_env(paths);
+            return;
+        }
+        if (access(temp_path, F_OK | X_OK) == 0)
+        {
+            command->path = temp_path;
+            break;
+        }
+        free(temp_path);
+        paths++;
+    }
+}
+
 void get_paths(t_command *command, t_shell *shell)
 {
     char *path_env = get_env_value(shell->env, "PATH");
@@ -40,75 +78,61 @@ void get_paths(t_command *command, t_shell *shell)
     char **paths = ft_split(path_env, ':');
     char **paths_orig = paths;
     if (!paths)
-    {
-        perror("ft_split");
-        return;
-    }
-    
-    if (command->command[0] == '/')
-    {
-        if (access(command->command, F_OK | X_OK) == 0)
-            command->path = ft_strdup(command->command);
-        free_double_env(paths_orig);
-        return;
-    } 
-    else if (command->command[0] == '.')
+        return (perror("ft_split"));
+    if (check_absolute_or_relative(command))
     {
         if (access(command->command, F_OK | X_OK) == 0)
         {
-            printf("valid\n");
             command->path = ft_strdup(command->command);
-        }
-        else
-        {
-            perror("access");
             free_double_env(paths_orig);
             return;
         }
-        free_double_env(paths_orig); // Free the paths array
-        return;
-    }
-    else
-    {
-        while (*paths)
+        else
         {
-            char *full_path = ft_strjoin(*paths, "/");
-            if (!full_path)
-            {
-                perror("ft_strjoin");
-                free_double_env(paths_orig);
-                return;
-            }
-            char *temp_path = ft_strjoin(full_path, command->command);
-            free(full_path);
-            if (!temp_path)
-            {
-                perror("ft_strjoin");
-                free_double_env(paths_orig);
-                return;
-            }
-            if (access(temp_path, F_OK | X_OK) == 0)
-            {
-                command->path = temp_path;
-                break;
-            }
-            free(temp_path);
-            paths++;
+            command->path = ft_strdup(command->command);
+            // Print access error for absolute paths (starting with / or .)
+            // perror("access");
+            free_double_env(paths_orig);
+            return;
         }
     }
-    
-    // Always free the paths array at the end
+    check_path(command, paths);
     free_double_env(paths_orig);
 }
 
+char **build_double_env(t_shell *shell, char **env_array, int count)
+{
+    t_env *current = shell->env;
+    int i;
 
+    i = 0;
+    if (!env_array || count <= 0)
+        return NULL;
+
+    while (current && i < count)
+    {
+        char *key_equals = ft_strjoin(current->key, "=");
+        if (!key_equals)
+            return (perror("ft_strjoin"), NULL);
+        
+        env_array[i] = ft_strjoin(key_equals, current->value);
+        free(key_equals);
+        
+        if (!env_array[i])
+            return (perror("ft_strjoin"), NULL);
+        current = current->next;
+        i++;
+    }
+    env_array[i] = NULL;
+    return env_array;
+}
 
 char **get_double_env(t_shell *shell)
 {
     t_env *current = shell->env;
-    int count = 0;
-    int i = 0;
+    int count;
     
+    count = 0;
     while (current)
     {
         count++;
@@ -123,65 +147,48 @@ char **get_double_env(t_shell *shell)
     }
     
     current = shell->env;
-    while (current && i < count)
-    {
-        char *key_equals = ft_strjoin(current->key, "=");
-        if (!key_equals)
-        {
-            for (int j = 0; j < i; j++)
-                free(env_array[j]);
-            free(env_array);
-            return NULL;
-        }
-        
-        env_array[i] = ft_strjoin(key_equals, current->value);
-        free(key_equals);
-        
-        if (!env_array[i])
-        {
-            for (int j = 0; j < i; j++)
-                free(env_array[j]);
-            free(env_array);
-            return NULL;
-        }
-        
-        current = current->next;
-        i++;
-    }
-    env_array[i] = NULL;
+    env_array = build_double_env(shell, env_array, count);
     return env_array;
 }
 
-// Helper function to create arguments array for a command
 char **create_args_array(t_command *command)
 {
-    int arg_count = 0;
+    int arg_count;
+    int i;
+
+    i = 0;
+    arg_count = 0;
     if (command->args)
     {
         while (command->args[arg_count])
             arg_count++;
     }
     
-    char **exec_args = malloc(sizeof(char *) * (arg_count + 2)); // +1 for command, +1 for NULL
+    char **exec_args = malloc(sizeof(char *) * (arg_count + 2));
     if (!exec_args)
     {
         perror("malloc");
         return NULL;
     }
-    
     exec_args[0] = command->command;
-    for (int i = 0; i < arg_count; i++)
+    while (i < arg_count)
+    {
         exec_args[i + 1] = command->args[i];
+        i++;
+    }
     exec_args[arg_count + 1] = NULL;
-    
     return exec_args;
 }
 
-// Execute a single command with redirected input/output if needed
-void execute_single_command(t_command *command, t_shell *shell, int input_fd, int output_fd)
+void free_exec_requirement(t_command *command, char **env_array, char **exec_args)
 {
-    (void)input_fd; // Unused parameter
-    (void)output_fd; // Unused parameter
+    free(command->path);
+    free_double_env(env_array);
+    free(exec_args);
+}
+
+void execute_single_command(t_command *command, t_shell *shell)
+{
     // Check if this is a builtin command
     if (is_builtin_command(command->command))
     {
@@ -195,7 +202,11 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
     get_paths(command, shell);
     if (!command->path)
     {
-        printf("Command not found: %s\n", command->command);
+        // Don't print "Command not found" for files starting with "." or "/" as access error was already handled
+        if (command->command[0] != '.' && command->command[0] != '/')
+        {
+            printf("Command not found: %s\n", command->command);
+        }
         free(command->path);
         command->path = NULL;
         if (command->command && command->command[0] != '\0')
@@ -220,38 +231,62 @@ void execute_single_command(t_command *command, t_shell *shell, int input_fd, in
         // Handle input redirection
         if (handle_redirections(command) == -1)
         {
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+            free_exec_requirement(command, env_array, exec_args); 
+            free_tokenizer(command->tokens);
+            free_commands(command);
+            free_env(shell->env);
             exit(EXIT_FAILURE);
         }
         // Execute the command
         if (execve(command->path, exec_args, env_array) == -1)
         {
-            perror("execve");
-            free(command->path);
-            free(exec_args);
-            free_double_env(env_array);
-            exit(EXIT_FAILURE);
+            if (errno == EACCES)
+            {
+                write(2, "minishell: permission denied: ", 30);
+                write(2, command->command, strlen(command->command));
+                write(2, "\n", 1);
+                exit(126);
+            }
+            else if (errno == ENOENT)
+            {
+                write(2, "minishell: ", 11);
+                write(2, command->command, strlen(command->command));
+                write(2, ": No such file or directory\n", 28);
+                exit(127);
+            }
+            else if (errno == ENOTDIR)
+            {
+                write(2, "minishell: ", 11);
+                write(2, command->command, strlen(command->command));
+                write(2, " : Not a directory\n", 19);
+            }
+            else
+            {
+                perror("minishell");
+            }
+            free_exec_requirement(command, env_array, exec_args);
+            free_tokenizer(command->tokens);
+            free_commands(command);
+            free_env(shell->env);
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+            exit(126); // Use 126 for permission denied, 127 for command not found
         }
-        free(command->path);
-        free(exec_args);
-        free_double_env(env_array);
+        // This line should never be reached since execve() replaces the process
+        free_exec_requirement(command, env_array, exec_args);
         exit(EXIT_SUCCESS);
     }
     else if (pid < 0)
     {
         perror("fork");
-        free(exec_args);
-        free_double_env(env_array);
+        free_exec_requirement(command, env_array, exec_args);
         return;
     }
-    
-    // Parent process
-    free(exec_args);
-    free_double_env(env_array);
-    free(command->path);
-    if (input_fd != STDIN_FILENO)
-        close(input_fd);
-    if (output_fd != STDOUT_FILENO)
-        close(output_fd);
+    free_exec_requirement(command, env_array, exec_args);
     int status;
     waitpid(pid, &status, 0);
     if (WIFEXITED(status))
@@ -344,6 +379,8 @@ void execute_pipeline(t_command *commands, t_shell *shell)
         
         if (pid == 0) // Child process
         {
+            signal(SIGINT, SIG_DFL);
+            signal(SIGQUIT, SIG_DFL);
             if (prev_pipe_read != STDIN_FILENO)
             {
                 dup2(prev_pipe_read, STDIN_FILENO);
@@ -356,24 +393,7 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 dup2(pipefd[1], STDOUT_FILENO);
                 close(pipefd[1]);
             }
-            if (!current->path)
-            {
-                fprintf(stderr, "Command not found: %s\n", current->command);
-                if (prev_pipe_read != STDIN_FILENO)
-                    close(prev_pipe_read);
-                if (current->next)
-                    close(pipefd[1]);
-                free(exec_args);
-                free_double_env(env_array);
-                free_tokenizer(current->tokens);
-                free(pids);
-                free_commands(commands);
-                free_env(shell->env);
-                exit(127);
-            }
-            
-            // Check if this is a builtin command
-            if (is_builtin_command(current->command))
+                        if (is_builtin_command(current->command))
             {
                 // Handle redirections for this command
                 if (handle_redirections(current) == -1)
@@ -413,11 +433,51 @@ void execute_pipeline(t_command *commands, t_shell *shell)
                 free_env(shell->env);
                 exit(result);
             }
+            if (!current->path)
+            {
+                handle_redirections(current);
+                // Don't print "Command not found" for files starting with "." as access error was already printed
+                if (current->command[0] != '.')
+                {
+                    fprintf(stderr, "Command not found: %s\n", current->command);
+                }
+                // if (prev_pipe_read != STDIN_FILENO)
+                //     close(prev_pipe_read);
+                // if (current->next)
+                // {
+                //     close(pipefd[0]);
+                //     close(pipefd[1]);
+                // }
+                if (prev_pipe_read != STDIN_FILENO)
+                    close(prev_pipe_read);
+                if (current->next)
+                {
+                    close(pipefd[1]);
+                    prev_pipe_read = pipefd[0];
+                }
+                close(STDIN_FILENO);
+                close(STDOUT_FILENO);
+                close(STDERR_FILENO);
+                free(exec_args);
+                free_double_env(env_array);
+                free_tokenizer(current->tokens);
+                free(pids);
+                free_commands(commands);
+                free_env(shell->env);
+                exit(127);
+            }
+            
+            // Check if this is a builtin command
             
             // Execute external command
             if (handle_redirections(current) == -1)
             {
+                free(exec_args);
+                free_double_env(env_array);
+                free_tokenizer(current->tokens);
+                free(pids);
                 free_commands(commands);
+                free(current->path);
                 free_env(shell->env);
                 exit(EXIT_FAILURE);
             }
@@ -470,10 +530,10 @@ void execute_pipeline(t_command *commands, t_shell *shell)
         }
     }
     
-    // Close the final pipe read end if it exists
+    // // Close the final pipe read end if it exists
     if (prev_pipe_read != STDIN_FILENO)
         close(prev_pipe_read);
-    
+
     // Wait for all child processes to finish
     int status;
     for (i = 0; i < cmd_count; i++)
@@ -484,6 +544,7 @@ void execute_pipeline(t_command *commands, t_shell *shell)
     }
     
     free(pids);
+    setup_interactive_signals(); // Restore interactive signals
 }
 
 void execute_external_command(t_command *commands, t_shell *shell)
@@ -494,7 +555,7 @@ void execute_external_command(t_command *commands, t_shell *shell)
     }
     else
     {
-        execute_single_command(commands, shell, STDIN_FILENO, STDOUT_FILENO);
+        execute_single_command(commands, shell);
     }
 }
 

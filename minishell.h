@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/05 21:39:54 by root             ###   ########.fr       */
+/*   Updated: 2025/08/10 20:07:31 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,10 +160,11 @@ int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell);
 
 // Start of execution
 void execute_external_command(t_command *commands, t_shell *shell);
-void execute_single_command(t_command *command, t_shell *shell, int input_fd, int output_fd);
+void execute_single_command(t_command *command, t_shell *shell);
 void execute_pipeline(t_command *commands, t_shell *shell);
 char **create_args_array(t_command *command);
 int execute_builtin(t_command *command, t_shell *shell, bool pipe);
 int is_builtin_command(const char *command);
+void print_commands(t_command *commands);
 
 #endif // MINISHELL_H
