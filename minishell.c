@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/11 18:12:47 by root             ###   ########.fr       */
+/*   Updated: 2025/08/12 17:40:51 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,12 +79,26 @@ char *get_env_value(t_env *env, const char *key)
     return NULL; // Key not found
 }
 
-void set_env_value(t_env *env, const char *key, const char *value)
+void set_env_value(t_env **env, const char *key, const char *value)
 {
-    t_env *current = env;
+    t_env *current = *env;
+
+    if (!*env)
+    {
+        t_env *new_env = malloc(sizeof(t_env));
+        if (!new_env)
+            return;
+        new_env->key = strdup(key);
+        new_env->value = value ? strdup(value) : NULL;
+        new_env->next = NULL;
+        *env = new_env;
+        return;
+    }
+    
     while (current)
     {
-        if (ft_strncmp(current->key, key, ft_strlen(key)) == 0)
+        if (ft_strncmp(current->key, key, ft_strlen(key)) == 0 && 
+            ft_strlen(current->key) == ft_strlen(key))
         {
             if (value)
             {      
@@ -99,18 +113,25 @@ void set_env_value(t_env *env, const char *key, const char *value)
     t_env *new_env = malloc(sizeof(t_env));
     if (!new_env)
         return;
-    while (env && env->next)
-        env = env->next;
+    
+    // Find the end of the list
+    current = *env;
+    while (current && current->next)
+        current = current->next;
+        
     new_env->key = strdup(key);
     if (value)
         new_env->value = strdup(value);
     else
         new_env->value = NULL;
     new_env->next = NULL;
-    if (!env)
-        env = new_env; 
+    
+    if (!current) // This should never happen since we checked !*env above
+    {
+        *env = new_env; 
+    }
     else
-        env->next = new_env;
+        current->next = new_env;
 }
 
 void print_env(t_env *env)
@@ -532,6 +553,16 @@ int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell)
     return (g_heredoc_interrupted ? -1 : 0);
 }
 
+void print_tokens(t_token *tokens)
+{
+    while (tokens)
+    {
+        printf("Type: %d, Value: %s|\n", tokens->type, 
+               tokens->value ? tokens->value : "NULL");
+        tokens = tokens->next;
+    }
+}
+
 int main(int argc, char **argv, char **envp)
 {
     char *input;
@@ -551,7 +582,7 @@ int main(int argc, char **argv, char **envp)
         input = readline("minishell > ");
         if (!input)
         {
-            //printf("exit\n"); // Print exit message when Ctrl+D is pressed
+            printf("exit\n"); // Print exit message when Ctrl+D is pressed
             break;
         }
         if (*input)
@@ -559,12 +590,12 @@ int main(int argc, char **argv, char **envp)
         t_tokenizer *tokenizer = init_tokenizer(input);
         if (tokenize(tokenizer, &shell))
         {
-            // print_tokens(tokenizer->tokens);
+            print_tokens(tokenizer->tokens);
             // change the tokens linked list to a command linked list
             t_command *commands = parse_tokens(tokenizer->tokens, tokenizer);
             if (commands)
             {
-                // print_commands(commands);
+                print_commands(commands);
                 execute_commands(&shell, commands);
                 free_commands(commands);
                 // Check if exit was requested

@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/10 20:07:31 by root             ###   ########.fr       */
+/*   Updated: 2025/08/12 17:41:46 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,7 +116,7 @@ void init_shell(t_shell *shell, char **envp);
 // Built-in command functions
 int builtin_env(t_shell *shell);
 char *get_env_value(t_env *env, const char *key);
-void set_env_value(t_env *env, const char *key, const char *value);
+void set_env_value(t_env **env, const char *key, const char *value);
 int builtin_pwd(t_shell *shell);
 int builtin_cd(t_shell *shell, char **path);
 int builtin_export(t_shell *shell, char **args);

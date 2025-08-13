@@ -14,7 +14,7 @@ SRCS = 	minishell.c \
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc
-CFLAGS = -Wall -Wextra -Werror
+CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3
 RM = rm -f
 
 all: ${NAME}

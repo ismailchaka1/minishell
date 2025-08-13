@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/05 15:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/05 15:13:14 by root             ###   ########.fr       */
+/*   Updated: 2025/08/12 17:10:03 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -119,6 +119,13 @@ t_command *parse_tokens(t_token *tokens, t_tokenizer *tokenizer)
                     }
                     new_args[count + 1] = NULL;
                     free(current->args);
+                }
+                else if (current && !current->command)
+                {
+                    // if (!current->command)
+                    // {
+                        current->command = strdup(tokens->value);
+                    // }
                 }
                 else
                 {

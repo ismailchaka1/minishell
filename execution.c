@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 14:55:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/11 18:30:47 by root             ###   ########.fr       */
+/*   Updated: 2025/08/13 01:13:47 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -187,20 +187,21 @@ void free_exec_requirement(t_command *command, char **env_array, char **exec_arg
     free(exec_args);
 }
 
-void execute_single_command(t_command *command, t_shell *shell)
+void free_parsing(t_command *command, t_shell *shell)
 {
-    // Check if this is a builtin command
-    if (is_builtin_command(command->command))
-    {
-        int result = execute_builtin(command, shell, false);
-        shell->exit_status = result;
+    if (!command)
         return;
-    }
-    
-    pid_t pid;
-    
-    get_paths(command, shell);
-    if (!command->path)
+    free_tokenizer(command->tokens);
+    free_commands(command);
+    free_env(shell->env);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+}
+
+static void handle_command_not_found(t_command *command, t_shell *shell)
+{
+    if (!command->path && get_env_value(shell->env, "PATH"))
     {
         // Don't print "Command not found" for files starting with "." or "/" as access error was already handled
         if (command->command[0] != '.' && command->command[0] != '/')
@@ -213,80 +214,115 @@ void execute_single_command(t_command *command, t_shell *shell)
             shell->exit_status = 127; // Command not found
         else
             shell->exit_status = 0; // Empty command
-        return;
     }
-    
-    char **env_array = get_double_env(shell);
-    char **exec_args = create_args_array(command);
-    
-    if (!exec_args)
+}
+
+static void handle_execve_error(t_command *command, char **env_array, char **exec_args, t_shell *shell)
+{
+    if (errno == EACCES)
     {
-        free_double_env(env_array);
-        return;
-    }
-    
-    pid = fork();
-    if (pid == 0) // Child process
-    {
-        // Handle input redirection
-        if (handle_redirections(command) == -1)
-        {
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
-            free_exec_requirement(command, env_array, exec_args); 
-            free_tokenizer(command->tokens);
-            free_commands(command);
-            free_env(shell->env);
-            exit(EXIT_FAILURE);
-        }
-        // Execute the command
-        if (execve(command->path, exec_args, env_array) == -1)
-        {
-            if (errno == EACCES)
-            {
-                write(2, "minishell: permission denied: ", 30);
-                write(2, command->command, strlen(command->command));
-                write(2, "\n", 1);
-                exit(126);
-            }
-            else if (errno == ENOENT)
-            {
-                write(2, "minishell: ", 11);
-                write(2, command->command, strlen(command->command));
-                write(2, ": No such file or directory\n", 28);
-                exit(127);
-            }
-            else if (errno == ENOTDIR)
-            {
-                write(2, "minishell: ", 11);
-                write(2, command->command, strlen(command->command));
-                write(2, " : Not a directory\n", 19);
-            }
-            else
-            {
-                perror("minishell");
-            }
-            free_exec_requirement(command, env_array, exec_args);
-            free_tokenizer(command->tokens);
-            free_commands(command);
-            free_env(shell->env);
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
-            exit(126); // Use 126 for permission denied, 127 for command not found
-        }
-        // This line should never be reached since execve() replaces the process
+        write(2, "minishell: permission denied: ", 30);
+        write(2, command->command, strlen(command->command));
+        write(2, "\n", 1);
         free_exec_requirement(command, env_array, exec_args);
-        exit(EXIT_SUCCESS);
+        free_parsing(command, shell);
+        exit(126);
     }
-    else if (pid < 0)
+    else if (errno == ENOENT)
     {
-        perror("fork");
+        write(2, "minishell: ", 11);
+        write(2, command->command, strlen(command->command));
+        write(2, ": No such file or directory\n", 28);
         free_exec_requirement(command, env_array, exec_args);
-        return;
+        free_parsing(command, shell);
+        exit(127);
+    }
+}
+
+static void handle_execve_error_continued(t_command *command, char **env_array, char **exec_args, t_shell *shell)
+{
+    if (errno == ENOTDIR)
+    {
+        write(2, "minishell: ", 11);
+        write(2, command->command, strlen(command->command));
+        write(2, " : Not a directory\n", 19);
+        free_exec_requirement(command, env_array, exec_args);
+        free_parsing(command, shell);
+        exit(126);
+    }
+    else
+    {
+        perror("minishell");
     }
     free_exec_requirement(command, env_array, exec_args);
+    exit(126);
+}
+
+static void execute_child_process(t_command *command, char **env_array, char **exec_args, t_shell *shell)
+{
+    int fd;
+    signal(SIGINT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    
+    // Handle input redirection
+    if (handle_redirections(command) == -1)
+    {
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+        free_exec_requirement(command, env_array, exec_args); 
+        free_tokenizer(command->tokens);
+        free_commands(command);
+        free_env(shell->env);
+        exit(EXIT_FAILURE);
+    }
+    if ((fd = open(command->command, __O_DIRECTORY)) != -1)
+    {
+        printf("minishell: %s: Is a directory\n", command->command);
+        close(fd);
+        free_exec_requirement(command, env_array, exec_args);
+        free_parsing(command, shell);
+        exit(EXIT_FAILURE);
+    }
+    
+    // Execute the command
+    if (execve(command->path, exec_args, env_array) == -1)
+    {
+        handle_execve_error(command, env_array, exec_args, shell);
+        handle_execve_error_continued(command, env_array, exec_args, shell);
+    }
+}
+
+static int prepare_execution(t_command *command, t_shell *shell, char ***env_array, char ***exec_args)
+{
+    get_paths(command, shell);
+    handle_command_not_found(command, shell);
+    
+    if (!command->path)
+        return -1;
+    
+    *env_array = get_double_env(shell);
+    *exec_args = create_args_array(command);
+    
+    if (!*exec_args)
+    {
+        free_double_env(*env_array);
+        return -1;
+    }
+    
+    return 0;
+}
+
+static void handle_parent_process(pid_t pid, t_shell *shell, char **env_array, char **exec_args)
+{
+    (void)env_array; // Unused in parent process
+    (void)exec_args; // Unused in parent process
+    if (pid < 0)
+    {
+        perror("fork");
+        return;
+    }
+    
     int status;
     waitpid(pid, &status, 0);
     if (WIFEXITED(status))
@@ -295,7 +331,34 @@ void execute_single_command(t_command *command, t_shell *shell)
     }
 }
 
-// Execute a pipeline of commands
+void execute_single_command(t_command *command, t_shell *shell)
+{
+    if (!command)
+        return;
+    if (is_builtin_command(command->command))
+    {
+        int result = execute_builtin(command, shell, false);
+        shell->exit_status = result;
+        return;
+    }
+    
+    char **env_array;
+    char **exec_args;
+    
+    if (prepare_execution(command, shell, &env_array, &exec_args) == -1)
+        return;
+    
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        execute_child_process(command, env_array, exec_args, shell);
+        free_exec_requirement(command, env_array, exec_args);
+        exit(EXIT_SUCCESS);
+    }
+    free_exec_requirement(command, env_array, exec_args);
+    handle_parent_process(pid, shell, env_array, exec_args);
+}
+
 void execute_pipeline(t_command *commands, t_shell *shell)
 {
     t_command *current = commands;
@@ -549,7 +612,7 @@ void execute_pipeline(t_command *commands, t_shell *shell)
 
 void execute_external_command(t_command *commands, t_shell *shell)
 {
-    if (commands->next)
+    if (commands && commands->next)
     {
         execute_pipeline(commands, shell);
     }

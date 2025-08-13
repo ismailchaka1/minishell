@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   export.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ichakank <ichakank@student.42.fr>          +#+  +:+       +#+        */
+/*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/29 21:57:56 by root              #+#    #+#             */
-/*   Updated: 2025/07/31 10:50:02 by ichakank         ###   ########.fr       */
+/*   Updated: 2025/08/12 17:42:00 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,7 +82,7 @@ int builtin_export(t_shell *shell, char **args)
             // check if key is valid
             if (check_valid_key(key))
             {
-                set_env_value(shell->env, key, value);
+                set_env_value(&shell->env, key, value);
             }
             else
             {
@@ -94,7 +94,7 @@ int builtin_export(t_shell *shell, char **args)
         else
         {
             if (check_valid_key(arg))
-                set_env_value(shell->env, arg, NULL);
+                set_env_value(&shell->env, arg, NULL);
             else
                 fprintf(stderr, "export: '%s': not a valid identifier\n", arg);
         }

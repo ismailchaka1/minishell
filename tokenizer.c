@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/05 15:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/05 15:13:14 by root             ###   ########.fr       */
+/*   Updated: 2025/08/12 17:17:42 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -604,12 +604,4 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell)
     return true;
 }
 
-void print_tokens(t_token *tokens)
-{
-    while (tokens)
-    {
-        printf("Type: %d, Value: %s|\n", tokens->type, 
-               tokens->value ? tokens->value : "NULL");
-        tokens = tokens->next;
-    }
-}
+
