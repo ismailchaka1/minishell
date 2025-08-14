@@ -10,7 +10,12 @@ SRCS = 	minishell.c \
 		tokenizer.c \
 		parsing.c \
 		redirections/input.c \
-		redirections/output.c 
+		redirections/output.c \
+		env_manager.c \
+		command_manager.c \
+		redirection_utils.c \
+		file_operations.c \
+		debug_utils.c 
 NAME = minishell
 OBJS = ${SRCS:.c=.o}
 CC = cc

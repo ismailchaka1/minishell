@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/12 17:41:46 by root             ###   ########.fr       */
+/*   Updated: 2025/08/14 17:43:19 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -158,7 +158,6 @@ int handle_input_redirection(char *filename);
 int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell);
 
 
-// Start of execution
 void execute_external_command(t_command *commands, t_shell *shell);
 void execute_single_command(t_command *command, t_shell *shell);
 void execute_pipeline(t_command *commands, t_shell *shell);
@@ -166,5 +165,23 @@ char **create_args_array(t_command *command);
 int execute_builtin(t_command *command, t_shell *shell, bool pipe);
 int is_builtin_command(const char *command);
 void print_commands(t_command *commands);
+void execute_commands(t_shell *shell, t_command *command);
+
+// Debug utility functions (debug_utils.c)
+void print_tokens(t_token *tokens);
+void print_commands_debug(t_command *commands);
+void clear_screen(void);
+
+// Environment manager functions (env_manager.c)
+// (Functions already declared above: init_env, free_env, get_env_value, set_env_value, print_env)
+
+// Command manager functions (command_manager.c)
+// (Functions already declared above: execute_commands, execute_builtin, is_builtin_command, free_commands, init_shell)
+
+// Redirection utils functions (redirection_utils.c)
+// (Functions already declared above: create_redirect, create_redirect_with_quotes, add_redirect, free_redirects, handle_standalone_redirections)
+
+// File operations functions (file_operations.c)
+// (Functions already declared above: handle_output_redirection, handle_input_redirection, handle_heredoc)
 
 #endif // MINISHELL_H
