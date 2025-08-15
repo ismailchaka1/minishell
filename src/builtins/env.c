@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../minishell.h"
+#include "minishell.h"
 
 // Built-in env command - prints all environment variables
 int builtin_env(t_shell *shell)

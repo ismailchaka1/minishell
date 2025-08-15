@@ -11,7 +11,7 @@
 /* ************************************************************************** */
 
 
-#include "../minishell.h"
+#include "minishell.h"
 
 
 int check_valid_key(char *str)
