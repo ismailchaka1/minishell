@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/30 18:55:26 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/05 21:40:22 by root             ###   ########.fr       */
+/*   Updated: 2025/08/15 21:56:46 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,6 +134,55 @@ int handle_command_heredoc(t_redirect *redirect)
     return finalize_heredoc(fd);
 }
 
+// Create heredoc file without redirecting stdin (for preprocessing)
+int create_heredoc_file(t_redirect *redirect)
+{
+    int fd;
+
+    // Setup heredoc signal handling
+    setup_heredoc_signals();
+    g_heredoc_interrupted = 0;
+
+    fd = setup_heredoc_file();
+    if (fd == -1)
+        return -1;
+    
+    if (read_heredoc_input(fd, redirect) == -1)
+    {
+        close(fd);
+        unlink(".heredoc");
+        setup_interactive_signals(); // Restore signals
+        return -1;
+    }
+
+    // Don't redirect stdin, just close the fd and restore signals
+    close(fd);
+    setup_interactive_signals(); // Restore signals
+    return 0;
+}
+
+// Apply heredoc redirection to stdin (for execution)
+int apply_heredoc_redirection(void)
+{
+    int fd = open(".heredoc", O_RDONLY);
+    if (fd == -1)
+    {
+        perror("heredoc file open");
+        return -1;
+    }
+
+    // Redirect stdin to read from heredoc file
+    if (dup2(fd, STDIN_FILENO) == -1)
+    {
+        perror("heredoc dup2");
+        close(fd);
+        return -1;
+    }
+
+    close(fd);
+    return 0;
+}
+
 
 t_redirect *find_last_heredoc(t_command *command)
 {
@@ -157,9 +206,15 @@ int process_single_redirect(t_redirect *redirect, t_redirect *last_heredoc)
     else if (redirect->type == 3) // Heredoc
     {
         if (redirect == last_heredoc)
-            return handle_command_heredoc(redirect);
+        {
+            // For heredocs, use the pre-created file instead of doing interactive input
+            return apply_heredoc_redirection();
+        }
         else
-            handle_heredoc(redirect->filename, !redirect->quoted_delimiter, NULL);
+        {
+            // Skip non-last heredocs (they were handled in preprocessing)
+            return 0;
+        }
     }
     return 0;
 }

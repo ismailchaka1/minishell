@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 16:45:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/15 16:45:00 by root             ###   ########.fr       */
+/*   Updated: 2025/08/15 18:06:07 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,10 +17,7 @@ char *expand_variables(char *str, t_shell *shell)
     size_t i = 0;
     char *result = ft_strdup("");
     if (!result)
-    {
-        // Return a copy of the original string if we can't allocate memory for result
         return ft_strdup(str);
-    }
 
     while (str[i])
     {
@@ -154,8 +151,7 @@ bool add_split_tokens(t_tokenizer *tokenizer, char *expanded_value)
     int i = 0;
     while (words[i])
     {
-        // Skip empty strings that might result from multiple spaces
-        if (words[i][0] != '\0')
+            if (words[i][0] != '\0')
         {
             t_token *token = create_token(TOKEN_WORD, words[i]);
             if (!token)

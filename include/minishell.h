@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/15 16:44:24 by root             ###   ########.fr       */
+/*   Updated: 2025/08/15 21:56:46 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -165,6 +165,8 @@ int handle_redirections(t_command *command);
 int handle_command_input_redirection(t_redirect *redirect);
 int handle_command_output_redirection(t_redirect *redirect);
 int handle_command_heredoc(t_redirect *redirect);
+int create_heredoc_file(t_redirect *redirect);
+int apply_heredoc_redirection(void);
 int handle_output_redirect(t_redirect *redirect);
 int handle_append_redirect(t_redirect *redirect);
 int setup_heredoc_file(void);
@@ -174,6 +176,7 @@ int read_heredoc_input(int fd, t_redirect *redirect);
 int finalize_heredoc(int fd);
 t_redirect *find_last_heredoc(t_command *command);
 int process_single_redirect(t_redirect *redirect, t_redirect *last_heredoc);
+int preprocess_heredocs(t_command *commands);
 
 // Standalone redirection functions
 int handle_standalone_redirections(t_command *command, t_shell *shell);

@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/14 00:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/14 17:43:19 by root             ###   ########.fr       */
+/*   Updated: 2025/08/15 21:56:46 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,6 +93,33 @@ int is_builtin_command(const char *command)
             strcmp(command, "exit") == 0);
 }
 
+// Preprocess all heredocs in the pipeline before execution
+int preprocess_heredocs(t_command *commands)
+{
+    t_command *current = commands;
+    
+    while (current)
+    {
+        if (current->redirects)
+        {
+            t_redirect *redirect = current->redirects;
+            while (redirect)
+            {
+                if (redirect->type == 3) // heredoc
+                {
+                    if (create_heredoc_file(redirect) == -1)
+                        return -1;
+                    // The heredoc is now ready in .heredoc file
+                    // We don't redirect stdin here - that will be done during execution
+                }
+                redirect = redirect->next;
+            }
+        }
+        current = current->next;
+    }
+    return 0;
+}
+
 void execute_commands(t_shell *shell, t_command *command)
 {
     if (!command->command)
@@ -106,6 +133,13 @@ void execute_commands(t_shell *shell, t_command *command)
             shell->exit_status = 0;
         }
         command = command->next;
+    }
+
+    // Preprocess all heredocs before pipeline execution
+    if (preprocess_heredocs(command) == -1)
+    {
+        shell->exit_status = 1;
+        return;
     }
 
     execute_external_command(command, shell);
