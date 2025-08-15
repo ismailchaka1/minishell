@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/14 17:43:19 by root             ###   ########.fr       */
+/*   Updated: 2025/08/15 16:15:25 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,9 +103,33 @@ bool tokenize(t_tokenizer *tokenizer, t_shell *shell);
 t_token *create_token(t_token_type type, char *value);
 void add_token(t_tokenizer *tokenizer, t_token *token);
 
+// Tokenizer variable expansion functions
+char *expand_variables(char *str, t_shell *shell);
+bool add_split_tokens(t_tokenizer *tokenizer, char *expanded_value);
+
+// Tokenizer quote and operator functions
+bool is_operator(char c);
+char *extract_quoted(t_tokenizer *tokenizer, char quote);
+
 // Command parsing and management functions
 t_command *parse_tokens(t_token *tokens, t_tokenizer *tokenizer);
 void free_commands(t_command *commands);
+
+// Parsing core functions
+t_command *create_new_command(char *command_name, t_tokenizer *tokenizer);
+bool add_argument_to_command(t_command *current, char *value);
+t_command *handle_pipe_token(t_command *current, t_token *tokens, t_tokenizer *tokenizer);
+bool add_arg(t_command *current, char *arg);
+
+// Parsing token handling functions
+t_command *handle_word_token(t_command *current, t_command *head, 
+                            t_token *tokens, t_tokenizer *tokenizer);
+t_command *handle_quoted_token(t_command *current, t_command *head,
+                              t_token *tokens, t_tokenizer *tokenizer);
+
+// Parsing redirection functions
+t_command *handle_redirection_token(t_command *current, t_command *head,
+                                   t_token *tokens, t_tokenizer *tokenizer);
 
 // Environment management functions
 t_env *init_env(t_env *env, char **envp);
@@ -166,6 +190,28 @@ int execute_builtin(t_command *command, t_shell *shell, bool pipe);
 int is_builtin_command(const char *command);
 void print_commands(t_command *commands);
 void execute_commands(t_shell *shell, t_command *command);
+
+// Execution memory management functions
+void free_double_env(char **env_array);
+char **build_double_env(t_shell *shell, char **env_array, int count);
+char **get_double_env(t_shell *shell);
+
+// Execution path resolution functions
+int check_absolute_or_relative(t_command *command);
+void check_path(t_command *command, char **paths);
+void get_paths(t_command *command, t_shell *shell);
+
+// Execution error handling functions
+void handle_command_not_found(t_command *command, t_shell *shell);
+void handle_execve_error(t_command *command, char **env_array, char **exec_args, t_shell *shell);
+void handle_execve_error_continued(t_command *command, char **env_array, char **exec_args, t_shell *shell);
+
+// Execution process management functions
+void free_exec_requirement(t_command *command, char **env_array, char **exec_args);
+void free_parsing(t_command *command, t_shell *shell);
+void execute_child_process(t_command *command, char **env_array, char **exec_args, t_shell *shell);
+int prepare_execution(t_command *command, t_shell *shell, char ***env_array, char ***exec_args);
+void handle_parent_process(pid_t pid, t_shell *shell, char **env_array, char **exec_args);
 
 // Debug utility functions (debug_utils.c)
 void print_tokens(t_token *tokens);

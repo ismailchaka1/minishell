@@ -5,10 +5,20 @@ SRCS = 	minishell.c \
 		builtins/cd.c \
 		builtins/export.c \
 		builtins/unset.c \
-		execution.c \
+		execution_memory.c \
+		execution_path.c \
+		execution_error.c \
+		execution_process.c \
+		execution_main.c \
 		redirections.c \
-		tokenizer.c \
-		parsing.c \
+		tokenizer_core.c \
+		tokenizer_variables.c \
+		tokenizer_quotes.c \
+		tokenizer_main.c \
+		parsing_core.c \
+		parsing_tokens.c \
+		parsing_redirections.c \
+		parsing_utils.c \
 		redirections/input.c \
 		redirections/output.c \
 		env_manager.c \
