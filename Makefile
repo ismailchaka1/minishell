@@ -39,7 +39,7 @@ NAME = minishell
 # Object files in obj directory, maintaining subdirectory structure
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3 -I$(INC_DIR)
+CFLAGS = -Wall -Wextra -Werror -I$(INC_DIR)
 RM = rm -f
 
 all: ${NAME}
