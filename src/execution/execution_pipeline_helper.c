@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   execution_main.c                                   :+:      :+:    :+:   */
+/*   execution_pipeline_helper.c                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,38 +12,39 @@
 
 #include "minishell.h"
 
-void	execute_single_command(t_command *command, t_shell *shell)
+void	execute_pipeline_child(t_command *current, t_command *commands,
+	int pipefd[2], int prev_pipe_read)
 {
 	char	**env_array;
 	char	**exec_args;
-	pid_t	pid;
-	int		result;
 
-	if (!command)
-		return ;
-	if (is_builtin_command(command->command))
+	signal(SIGINT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	if (prev_pipe_read != STDIN_FILENO)
 	{
-		result = execute_builtin(command, shell, false);
-		shell->exit_status = result;
-		return ;
+		dup2(prev_pipe_read, STDIN_FILENO);
+		close(prev_pipe_read);
 	}
-	if (prepare_execution(command, shell, &env_array, &exec_args) == -1)
-		return ;
-	pid = fork();
-	if (pid == 0)
+	if (current->next)
 	{
-		execute_child_process(command, env_array, exec_args, shell);
-		free_exec_requirement(command, env_array, exec_args);
-		exit(EXIT_SUCCESS);
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		close(pipefd[1]);
 	}
-	free_exec_requirement(command, env_array, exec_args);
-	handle_parent_process(pid, shell, env_array, exec_args);
+	env_array = get_double_env(NULL);
+	exec_args = create_args_array(current);
+	handle_child_process_pipeline(current, commands, exec_args, env_array);
+	exit(EXIT_SUCCESS);
 }
 
-void	execute_external_command(t_command *commands, t_shell *shell)
+void	execute_pipeline_parent(t_command *current, t_shell *shell,
+	pid_t *pids, int *i)
 {
-	if (commands && commands->next)
-		execute_pipeline(commands, shell);
-	else
-		execute_single_command(commands, shell);
+	(void)shell;
+	pids[(*i)++] = 0;
+	if (current->path)
+	{
+		free(current->path);
+		current->path = NULL;
+	}
 }

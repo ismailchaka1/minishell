@@ -14,9 +14,14 @@ SRCS = 	$(SRC_DIR)/core/minishell.c \
 		$(SRC_DIR)/builtins/unset.c \
 		$(SRC_DIR)/execution/execution_memory.c \
 		$(SRC_DIR)/execution/execution_path.c \
+		$(SRC_DIR)/execution/execution_path_helper.c \
 		$(SRC_DIR)/execution/execution_error.c \
 		$(SRC_DIR)/execution/execution_process.c \
+		$(SRC_DIR)/execution/execution_process_helper.c \
 		$(SRC_DIR)/execution/execution_main.c \
+		$(SRC_DIR)/execution/execution_pipeline.c \
+		$(SRC_DIR)/execution/execution_pipeline_child.c \
+		$(SRC_DIR)/execution/execution_pipeline_helper.c \
 		$(SRC_DIR)/redirections/redirections.c \
 		$(SRC_DIR)/tokenizer/tokenizer_core.c \
 		$(SRC_DIR)/tokenizer/tokenizer_variables.c \

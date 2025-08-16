@@ -6,80 +6,70 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 17:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/15 17:00:00 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:00:00 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-int check_absolute_or_relative(t_command *command)
+int	check_absolute_or_relative(t_command *command)
 {
-    if (ft_strchr(command->command, '/'))
-        return 1; // Absolute path
-    else if (ft_strchr(command->command, '.'))
-        return 1;
-    return 0;
+	if (ft_strchr(command->command, '/'))
+		return (1);
+	else if (ft_strchr(command->command, '.'))
+		return (1);
+	return (0);
 }
 
-void check_path(t_command *command, char **paths)
+void	check_path(t_command *command, char **paths)
 {
-    while (*paths)
-    {
-        char *full_path = ft_strjoin(*paths, "/");
-        if (!full_path)
-        {
-            perror("ft_strjoin");
-            free_double_env(paths);
-            return;
-        }
-        char *temp_path = ft_strjoin(full_path, command->command);
-        free(full_path);
-        if (!temp_path)
-        {
-            perror("ft_strjoin");
-            free_double_env(paths);
-            return;
-        }
-        if (access(temp_path, F_OK | X_OK) == 0)
-        {
-            command->path = temp_path;
-            break;
-        }
-        free(temp_path);
-        paths++;
-    }
+	char	*temp_path;
+
+	while (*paths)
+	{
+		temp_path = build_full_path(*paths, command->command);
+		if (!temp_path)
+		{
+			free_double_env(paths);
+			return ;
+		}
+		if (access(temp_path, F_OK | X_OK) == 0)
+		{
+			command->path = temp_path;
+			break ;
+		}
+		free(temp_path);
+		paths++;
+	}
 }
 
-void get_paths(t_command *command, t_shell *shell)
+static void	handle_no_path_env(t_command *command)
 {
-    char *path_env = get_env_value(shell->env, "PATH");
-    if (!path_env)
-    {
-        fprintf(stderr, "%s : No such file or directory\n", command->command);
-        return;
-    }
+	ft_putstr_fd(command->command, STDERR_FILENO);
+	ft_putstr_fd(" : No such file or directory\n", STDERR_FILENO);
+}
 
-    char **paths = ft_split(path_env, ':');
-    char **paths_orig = paths;
-    if (!paths)
-        return (perror("ft_split"));
-    if (check_absolute_or_relative(command))
-    {
-        if (access(command->command, F_OK | X_OK) == 0)
-        {
-            command->path = ft_strdup(command->command);
-            free_double_env(paths_orig);
-            return;
-        }
-        else
-        {
-            command->path = ft_strdup(command->command);
-            // Print access error for absolute paths (starting with / or .)
-            // perror("access");
-            free_double_env(paths_orig);
-            return;
-        }
-    }
-    check_path(command, paths);
-    free_double_env(paths_orig);
+void	get_paths(t_command *command, t_shell *shell)
+{
+	char	*path_env;
+	char	**paths;
+	char	**paths_orig;
+
+	path_env = get_env_value(shell->env, "PATH");
+	if (!path_env)
+	{
+		handle_no_path_env(command);
+		return ;
+	}
+	paths = ft_split(path_env, ':');
+	paths_orig = paths;
+	if (!paths)
+		return (perror("ft_split"));
+	if (check_absolute_or_relative(command))
+	{
+		handle_absolute_path(command, paths_orig);
+		return ;
+	}
+	check_path(command, paths);
+	free_double_env(paths_orig);
 }

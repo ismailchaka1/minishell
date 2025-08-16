@@ -188,6 +188,11 @@ int handle_heredoc(char *delimiter, bool expand_vars, t_shell *shell);
 void execute_external_command(t_command *commands, t_shell *shell);
 void execute_single_command(t_command *command, t_shell *shell);
 void execute_pipeline(t_command *commands, t_shell *shell);
+void execute_pipeline_loop(t_command *commands, t_shell *shell, pid_t *pids, int *prev_pipe_read);
+void wait_for_children(pid_t *pids, int cmd_count, t_shell *shell);
+void execute_pipeline_child(t_command *current, t_command *commands, int pipefd[2], int prev_pipe_read);
+void execute_pipeline_parent(t_command *current, t_shell *shell, pid_t *pids, int *i);
+void handle_child_process_pipeline(t_command *current, t_command *commands, char **exec_args, char **env_array);
 char **create_args_array(t_command *command);
 int execute_builtin(t_command *command, t_shell *shell, bool pipe);
 int is_builtin_command(const char *command);
@@ -203,6 +208,8 @@ char **get_double_env(t_shell *shell);
 int check_absolute_or_relative(t_command *command);
 void check_path(t_command *command, char **paths);
 void get_paths(t_command *command, t_shell *shell);
+char *build_full_path(char *path, char *command);
+void handle_absolute_path(t_command *command, char **paths_orig);
 
 // Execution error handling functions
 void handle_command_not_found(t_command *command, t_shell *shell);
