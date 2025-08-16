@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 17:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/16 12:57:28 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:34:09 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ void	execute_pipeline_child(t_command *current, t_command *commands,
 		dup2(pipefd[1], STDOUT_FILENO);
 		close(pipefd[1]);
 	}
-	env_array = get_double_env(NULL);
+	env_array = get_double_env(current->shell);
 	exec_args = create_args_array(current);
 	handle_child_process_pipeline(current, commands, exec_args, env_array);
 	exit(EXIT_SUCCESS);

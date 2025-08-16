@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 17:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/16 12:57:28 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:42:45 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ void	handle_child_process_pipeline(t_command *current, t_command *commands,
 	char **exec_args, char **env_array)
 {
 	if (is_builtin_command(current->command))
-		execute_builtin_in_pipeline(current, NULL, commands);
+		execute_builtin_in_pipeline(current, current->shell, commands);
 	if (!current->path)
 	{
 		handle_redirections(current);

@@ -1,12 +1,22 @@
 /* ************************************************************************** */
-/*                                                                            */
+/*    		else
+        {
+			execute_pipeline_parent(current, shell, pids, &i);
+            if (*prev_pipe_read != STDIN_FILENO)
+                close(*prev_pipe_read);
+            if (current->next)
+            {
+                close(pipefd[1]); // Close write end in parent
+                *prev_pipe_read = pipefd[0];
+            }
+        }                                                             */
 /*                                                        :::      ::::::::   */
 /*   execution_pipeline.c                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 17:00:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/16 12:57:28 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:40:51 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +96,16 @@ void	execute_pipeline_loop(t_command *commands, t_shell *shell,
 		if (pid == 0)
 			execute_pipeline_child(current, commands, pipefd, *prev_pipe_read);
 		else
+        {
 			execute_pipeline_parent(current, shell, pids, &i);
+            if (*prev_pipe_read != STDIN_FILENO)
+                close(*prev_pipe_read);
+            if (current->next)
+            {
+                close(pipefd[1]);
+                *prev_pipe_read = pipefd[0];
+            }
+        }
 		current = current->next;
 	}
 }

@@ -6,13 +6,13 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 16:45:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/15 18:05:11 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:28:47 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-t_tokenizer	*init_tokenizer(char *input)
+t_tokenizer	*init_tokenizer(char *input, t_shell *shell)
 {
 	t_tokenizer	*tokenizer;
 
@@ -22,6 +22,7 @@ t_tokenizer	*init_tokenizer(char *input)
 	tokenizer->input = strdup(input);
 	tokenizer->pos = 0;
 	tokenizer->tokens = NULL;
+	tokenizer->shell = shell;
 	return (tokenizer);
 }
 

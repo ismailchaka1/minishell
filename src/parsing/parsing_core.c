@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/15 16:30:00 by root              #+#    #+#             */
-/*   Updated: 2025/08/15 16:15:25 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:32:23 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,8 @@ t_command *create_new_command(char *command_name, t_tokenizer *tokenizer)
     cmd->path = NULL;
     cmd->next = NULL;
     cmd->tokens = tokenizer;
-    
+    cmd->shell = tokenizer->shell;
+
     return cmd;
 }
 

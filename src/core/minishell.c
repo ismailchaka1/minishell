@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:45:08 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/14 17:44:25 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:31:29 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,14 +57,14 @@ static int	process_input(char *input, t_shell *shell)
 	t_tokenizer	*tokenizer;
 	t_command	*commands;
 
-	tokenizer = init_tokenizer(input);
+	tokenizer = init_tokenizer(input, shell);
 	if (tokenize(tokenizer, shell))
 	{
-		print_tokens(tokenizer->tokens);
+		// print_tokens(tokenizer->tokens);
 		commands = parse_tokens(tokenizer->tokens, tokenizer);
 		if (commands)
 		{
-			print_commands(commands);
+			// print_commands(commands);
 			execute_commands(shell, commands);
 			free_commands(commands);
 			if (shell->exit_status == -1)

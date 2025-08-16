@@ -6,7 +6,7 @@
 /*   By: root <root@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/26 23:44:59 by ichakank          #+#    #+#             */
-/*   Updated: 2025/08/16 12:57:28 by root             ###   ########.fr       */
+/*   Updated: 2025/08/16 13:33:19 by root             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,6 +70,7 @@ typedef struct s_tokenizer
     char *input;         // Input string
     size_t pos;          // Current position in input
     t_token *tokens;     // Linked list of tokens
+    t_shell *shell;      // Shell instance associated with the tokenizer
 } t_tokenizer;
 
 // generate me linked list of command that will be executed in execve and hande me redirection and pipes and heredocs
@@ -92,12 +93,13 @@ typedef struct s_command
     bool heredoc;           // Indicates if this command uses heredoc (for backward compatibility)
     char *heredoc_delimiter; // Delimiter for heredoc
     bool heredoc_expand;
+    t_shell *shell;
     char *path;            // Full path to the command (if found in PATH)
-    struct s_tokenizer *tokens; // Tokens associated with this command
-    struct s_command *next; // Pointer to the next command in the pipeline
+    struct s_tokenizer *tokens; 
+    struct s_command *next;
 } t_command;
 
-t_tokenizer *init_tokenizer(char *input);
+t_tokenizer *init_tokenizer(char *input, t_shell *shell);
 void free_tokenizer(t_tokenizer *tokenizer);
 bool tokenize(t_tokenizer *tokenizer, t_shell *shell);
 t_token *create_token(t_token_type type, char *value);
